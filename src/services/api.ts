@@ -8,27 +8,56 @@
 import { getServerUrl, getAuthHeaders } from './supabase';
 import type {
   Activity,
+  AiItinerary,
   ActivityReview,
   SharedItinerary,
+  GuestInterestProfile,
   ActivitiesResponse,
   ReviewsResponse,
   ItinerariesResponse,
 } from '../types';
 
 const SERVER_ENDPOINT = 'make-server-01df2f8f';
+const SERVER_FUNCTION_NAME = 'server';
+
+function buildServerUrl(baseUrl: string, path: string) {
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, '');
+  const hasFunctionName = /\/functions\/v1\/[^/]+$/i.test(
+    normalizedBaseUrl,
+  );
+  const functionBaseUrl = hasFunctionName
+    ? normalizedBaseUrl
+    : `${normalizedBaseUrl}/${SERVER_FUNCTION_NAME}`;
+
+  return `${functionBaseUrl}/${SERVER_ENDPOINT}/${path}`;
+}
 
 /**
  * Base fetch wrapper with error handling
  */
-async function fetchFromServer<T>(path: string): Promise<T> {
+async function fetchFromServer<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
   const [url, headers] = await Promise.all([
     getServerUrl(),
     getAuthHeaders(),
   ]);
   
-  const fullUrl = `${url}/${SERVER_ENDPOINT}/${path}`;
+  const fullUrl = buildServerUrl(url, path);
+  const mergedHeaders = new Headers(headers);
+
+  if (init?.headers) {
+    const requestHeaders = new Headers(init.headers);
+    requestHeaders.forEach((value, key) => {
+      mergedHeaders.set(key, value);
+    });
+  }
   
-  const response = await fetch(fullUrl, { headers });
+  const response = await fetch(fullUrl, {
+    ...init,
+    headers: mergedHeaders,
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch ${path}: ${response.statusText}`);
@@ -72,4 +101,21 @@ export async function fetchSharedItineraries(): Promise<SharedItinerary[]> {
  */
 export async function checkServerHealth(): Promise<{ status: string }> {
   return fetchFromServer<{ status: string }>('health');
+}
+
+/**
+ * Generate an AI itinerary from the guest's interests
+ */
+export async function generateGuestItinerary(
+  preferences: GuestInterestProfile,
+): Promise<AiItinerary> {
+  const response = await fetchFromServer<{ itinerary: AiItinerary }>(
+    'ai-itinerary',
+    {
+      method: 'POST',
+      body: JSON.stringify({ preferences }),
+    },
+  );
+
+  return response.itinerary;
 }

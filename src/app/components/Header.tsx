@@ -1,17 +1,22 @@
 import { Link, useLocation, useNavigate } from "react-router";
-import { ShoppingCart, Mountain, LogOut } from "lucide-react";
-import { useBooking } from "../context/BookingContext";
+import { Mountain, LogOut } from "lucide-react";
+import { useAiItinerary } from "../context/AiItineraryContext";
 import { useAuth } from "../context/AuthContext";
+import { useGuestInterest } from "../context/GuestInterestContext";
 import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
 
 export function Header() {
-  const { bookedActivities } = useBooking();
+  const { clearAllItineraries } = useAiItinerary();
   const { userRole, logout } = useAuth();
+  const { clearProfile } = useGuestInterest();
   const location = useLocation();
   const navigate = useNavigate();
 
   const handleLogout = () => {
+    if (userRole === "guest") {
+      clearProfile();
+      clearAllItineraries();
+    }
     logout();
     navigate("/");
   };

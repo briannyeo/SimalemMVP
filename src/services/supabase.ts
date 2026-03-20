@@ -13,6 +13,26 @@
 // Lazy-loaded Figma config - only imported if needed
 let figmaConfigCache: { projectId: string; publicAnonKey: string } | null | undefined = undefined;
 
+function isConfiguredSupabaseUrl(value: string | undefined): value is string {
+  return Boolean(
+    value &&
+      /^https:\/\/.+\.supabase\.co$/i.test(value) &&
+      !value.includes('your-project-ref'),
+  );
+}
+
+function isConfiguredServerUrl(value: string | undefined): value is string {
+  return Boolean(
+    value &&
+      /^https:\/\/.+\.supabase\.co\/functions\/v1$/i.test(value) &&
+      !value.includes('your-project-ref'),
+  );
+}
+
+function isConfiguredAnonKey(value: string | undefined): value is string {
+  return Boolean(value && value.trim() && value !== 'your_supabase_anon_key');
+}
+
 /**
  * Attempt to load Figma Make configuration
  * Returns null if file doesn't exist (local dev without .env)
@@ -46,7 +66,7 @@ async function getFigmaConfig(): Promise<{ projectId: string; publicAnonKey: str
 export async function getSupabaseUrl(): Promise<string> {
   // Try environment variable first (local development)
   const envUrl = import.meta.env.VITE_SUPABASE_URL;
-  if (envUrl) {
+  if (isConfiguredSupabaseUrl(envUrl)) {
     return envUrl;
   }
   
@@ -68,7 +88,7 @@ export async function getSupabaseUrl(): Promise<string> {
 export async function getSupabaseAnonKey(): Promise<string> {
   // Try environment variable first (local development)
   const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  if (envKey) {
+  if (isConfiguredAnonKey(envKey)) {
     return envKey;
   }
   
@@ -89,7 +109,7 @@ export async function getSupabaseAnonKey(): Promise<string> {
 export async function getServerUrl(): Promise<string> {
   const serverUrl = import.meta.env.VITE_SERVER_URL;
   
-  if (serverUrl) {
+  if (isConfiguredServerUrl(serverUrl)) {
     return serverUrl;
   }
   

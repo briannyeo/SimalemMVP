@@ -73,6 +73,43 @@ export interface GuestBooking {
 
 export type UserRole = 'guest' | 'supervisor';
 
+export type GuestInterestKey =
+  | 'cultural'
+  | 'environmental'
+  | 'adventure'
+  | 'community'
+  | 'lowImpact';
+
+export interface GuestInterestProfile {
+  selectedInterests: GuestInterestKey[];
+  notes: string;
+  updatedAt: string | null;
+}
+
+export interface AiItineraryRecommendation {
+  activityId: string;
+  activityName: string;
+  reason: string;
+  matchTags: string[];
+}
+
+export interface AiItinerarySource {
+  fileName: string;
+  score?: number;
+  snippet?: string;
+}
+
+export interface AiItinerary {
+  title: string;
+  summary: string;
+  rationale: string;
+  recommendedActivities: AiItineraryRecommendation[];
+  provider: 'openai-rag' | 'openai-prompt' | 'local-fallback';
+  model: string;
+  generatedAt: string;
+  sources: AiItinerarySource[];
+}
+
 // ============================================================================
 // Database Types (Supabase table schemas)
 // ============================================================================

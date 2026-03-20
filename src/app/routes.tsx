@@ -5,6 +5,7 @@ import { Summary } from './pages/Summary';
 import { Community } from './pages/Community';
 import { Login } from './pages/Login';
 import { Admin } from './pages/Admin';
+import { GuestInterestForm } from './pages/GuestInterestForm';
 import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -13,6 +14,10 @@ export const router = createBrowserRouter([
     path: '/',
     index: true,
     Component: Login,
+  },
+  {
+    path: '/guest-interests',
+    Component: GuestInterestForm,
   },
   {
     path: '/',
