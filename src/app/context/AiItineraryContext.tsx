@@ -3,112 +3,74 @@ import type { AiItinerary } from '../../types';
 
 const STORAGE_KEY = 'simalem_ai_itinerary';
 
-interface StoredAiItineraries {
-  current: AiItinerary | null;
-  history: AiItinerary[];
-}
-
 interface AiItineraryContextType {
   itinerary: AiItinerary | null;
-  itineraryHistory: AiItinerary[];
   setItinerary: (itinerary: AiItinerary) => void;
-  selectItinerary: (itinerary: AiItinerary) => void;
   clearItinerary: () => void;
   clearAllItineraries: () => void;
 }
 
 const AiItineraryContext = createContext<AiItineraryContextType | undefined>(undefined);
 
-function getStoredItineraries(): StoredAiItineraries {
+function getStoredItinerary(): AiItinerary | null {
   const savedItinerary = localStorage.getItem(STORAGE_KEY);
 
   if (!savedItinerary) {
-    return {
-      current: null,
-      history: [],
-    };
+    return null;
   }
 
   try {
-    const parsed = JSON.parse(savedItinerary) as Partial<StoredAiItineraries> | AiItinerary;
+    const parsed = JSON.parse(savedItinerary) as
+      | { current?: AiItinerary | null; history?: AiItinerary[] }
+      | AiItinerary;
 
     if ('history' in parsed || 'current' in parsed) {
-      return {
-        current: parsed.current ?? null,
-        history: Array.isArray(parsed.history) ? parsed.history : [],
-      };
+      if (parsed.current) {
+        return parsed.current;
+      }
+
+      if (Array.isArray(parsed.history) && parsed.history.length > 0) {
+        return parsed.history[0];
+      }
+
+      return null;
     }
 
-    return {
-      current: parsed as AiItinerary,
-      history: parsed ? [parsed as AiItinerary] : [],
-    };
+    return parsed as AiItinerary;
   } catch {
-    return {
-      current: null,
-      history: [],
-    };
+    return null;
   }
 }
 
 export function AiItineraryProvider({ children }: { children: ReactNode }) {
-  const [storedItineraries, setStoredItineraries] = useState<StoredAiItineraries>(
-    getStoredItineraries,
-  );
+  const [itinerary, setStoredItinerary] = useState<AiItinerary | null>(getStoredItinerary);
 
   useEffect(() => {
-    if (storedItineraries.current || storedItineraries.history.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(storedItineraries));
+    if (itinerary) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(itinerary));
       return;
     }
 
     localStorage.removeItem(STORAGE_KEY);
-  }, [storedItineraries]);
+  }, [itinerary]);
 
   const setItinerary = (nextItinerary: AiItinerary) => {
-    setStoredItineraries((current) => {
-      const nextHistory = [
-        nextItinerary,
-        ...current.history.filter(
-          (itinerary) => itinerary.generatedAt !== nextItinerary.generatedAt,
-        ),
-      ].slice(0, 12);
-
-      return {
-        current: nextItinerary,
-        history: nextHistory,
-      };
-    });
-  };
-
-  const selectItinerary = (nextItinerary: AiItinerary) => {
-    setStoredItineraries((current) => ({
-      current: nextItinerary,
-      history: current.history,
-    }));
+    setStoredItinerary(nextItinerary);
   };
 
   const clearItinerary = () => {
-    setStoredItineraries((current) => ({
-      current: null,
-      history: current.history,
-    }));
+    setStoredItinerary(null);
   };
 
   const clearAllItineraries = () => {
-    setStoredItineraries({
-      current: null,
-      history: [],
-    });
+    setStoredItinerary(null);
   };
 
   return (
     <AiItineraryContext.Provider
       value={{
-        itinerary: storedItineraries.current,
-        itineraryHistory: storedItineraries.history,
+        itinerary,
         setItinerary,
-        selectItinerary,
         clearItinerary,
         clearAllItineraries,
       }}

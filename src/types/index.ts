@@ -91,6 +91,7 @@ export interface AiItineraryRecommendation {
   activityName: string;
   reason: string;
   matchTags: string[];
+  suggestedTime: string;
 }
 
 export interface AiItinerarySource {

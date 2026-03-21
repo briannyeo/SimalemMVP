@@ -14,7 +14,53 @@ import {
   useGuestInterest,
 } from "../context/GuestInterestContext";
 import { fetchActivities } from "../../services/api";
-import type { Activity } from "../../types";
+import type { Activity, AiItinerary } from "../../types";
+
+function getProviderLabel(provider: AiItinerary["provider"]) {
+  if (provider === "openai-rag") {
+    return "RAG-backed";
+  }
+
+  if (provider === "openai-prompt") {
+    return "AI generated";
+  }
+
+  return null;
+}
+
+function getSuggestedTimeLabel(suggestedTime: string | undefined, index: number) {
+  if (suggestedTime && suggestedTime.trim()) {
+    return suggestedTime;
+  }
+
+  const fallbackTimes = [
+    "8:30 AM to 10:00 AM",
+    "11:00 AM to 1:00 PM",
+    "3:00 PM to 5:00 PM",
+  ];
+
+  return fallbackTimes[index] ?? "Flexible timing";
+}
+
+function getItineraryOverview(itinerary: AiItinerary) {
+  return [
+    {
+      label: "Title",
+      value: itinerary.title,
+      valueClassName: "text-xl font-semibold text-gray-900",
+    },
+    {
+      label: "Summary",
+      value: itinerary.summary,
+      valueClassName: "text-sm text-gray-600",
+    },
+    {
+      label: "Rationale",
+      value: itinerary.rationale,
+      valueClassName: "text-sm text-gray-700",
+    },
+  ];
+}
 
 export function Activities() {
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -24,7 +70,7 @@ export function Activities() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const { addActivity } = useBooking();
-  const { itinerary, itineraryHistory, selectItinerary } = useAiItinerary();
+  const { itinerary } = useAiItinerary();
   const { profile, hasInterests } = useGuestInterest();
   const location = useLocation();
   const navigate = useNavigate();
@@ -144,30 +190,22 @@ export function Activities() {
     .filter((option) => profile.selectedInterests.includes(option.id))
     .map((option) => option.label);
 
-  const generatedItineraryCount = itineraryHistory.length;
-
-  const handleUseGeneratedItinerary = (
-    selectedItinerary: (typeof itineraryHistory)[number],
-  ) => {
-    selectItinerary(selectedItinerary);
-    setSelectedCategory("all");
-    toast.success("AI itinerary prioritized", {
-      description: `${selectedItinerary.title} is now guiding the activity order.`,
-    });
-  };
+  const generatedItineraryCount = itinerary ? 1 : 0;
+  const providerLabel = itinerary ? getProviderLabel(itinerary.provider) : null;
+  const itineraryOverview = itinerary ? getItineraryOverview(itinerary) : [];
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="relative bg-gray-900 text-white py-16 overflow-hidden">
+      <div className="relative overflow-hidden bg-gray-900 py-16 text-white">
         <img
           src="https://images.unsplash.com/photo-1615009820619-d69e2f948e8d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxMYWtlJTIwVG9iYSUyMEluZG9uZXNpYXxlbnwxfHx8fDE3NzE2ODM0NzJ8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
           alt="Lake Toba"
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-black/40"></div>
-        <div className="container mx-auto px-4 relative z-10">
-          <h1 className="text-4xl font-bold mb-4">Discover Our Activities</h1>
-          <p className="text-lg text-white/90 max-w-2xl">
+        <div className="container relative z-10 mx-auto px-4">
+          <h1 className="mb-4 text-4xl font-bold">Discover Our Activities</h1>
+          <p className="max-w-2xl text-lg text-white/90">
             Experience meaningful adventures that benefit both local communities
             and the environment. Each activity contributes to our sustainability
             goals.
@@ -185,25 +223,27 @@ export function Activities() {
                     <Badge className="bg-sky-600 text-white hover:bg-sky-600">
                       AI itinerary
                     </Badge>
-                    <Badge variant="secondary" className="rounded-full">
-                      {itinerary.provider === "openai-rag"
-                        ? "RAG-backed"
-                        : itinerary.provider === "openai-prompt"
-                          ? "AI generated"
-                          : "Fallback suggestions"}
-                    </Badge>
+                    {providerLabel && (
+                      <Badge variant="secondary" className="rounded-full">
+                        {providerLabel}
+                      </Badge>
+                    )}
                   </div>
-                  <div>
-                    <h2 className="text-2xl font-semibold text-gray-900">
-                      {itinerary.title}
-                    </h2>
-                    <p className="mt-2 max-w-3xl text-sm text-gray-600">
-                      {itinerary.summary}
-                    </p>
+                  <div className="grid gap-3 max-w-3xl">
+                    {itineraryOverview.map((item) => (
+                      <div
+                        key={item.label}
+                        className="rounded-2xl border border-white/70 bg-white/70 p-4 shadow-sm"
+                      >
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">
+                          {item.label}
+                        </p>
+                        <p className={`mt-2 ${item.valueClassName}`}>
+                          {item.value}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                  <p className="max-w-3xl text-sm text-gray-700">
-                    {itinerary.rationale}
-                  </p>
                 </div>
 
                 <Button
@@ -216,7 +256,7 @@ export function Activities() {
               </div>
 
               <div className="grid gap-4 lg:grid-cols-3">
-                {itinerary.recommendedActivities.map((recommendation) => (
+                {itinerary.recommendedActivities.map((recommendation, index) => (
                   <div
                     key={recommendation.activityId}
                     className="rounded-2xl border border-white bg-white/90 p-4 shadow-sm"
@@ -224,18 +264,13 @@ export function Activities() {
                     <h3 className="font-semibold text-gray-900">
                       {recommendation.activityName}
                     </h3>
+                    <p className="mt-2 text-sm font-medium text-emerald-700">
+                      Suggested time:{" "}
+                      {getSuggestedTimeLabel(recommendation.suggestedTime, index)}
+                    </p>
                     <p className="mt-2 text-sm text-gray-600">
                       {recommendation.reason}
                     </p>
-                    {recommendation.matchTags.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {recommendation.matchTags.map((tag) => (
-                          <Badge key={tag} variant="secondary" className="rounded-full">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
@@ -250,7 +285,7 @@ export function Activities() {
           </div>
         )}
 
-        {hasInterests && (
+        {/* {hasInterests && (
           <div className="mb-6 rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-3">
@@ -287,7 +322,7 @@ export function Activities() {
               </Button>
             </div>
           </div>
-        )}
+        )} */}
 
         <div className="mb-8">
           <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
@@ -296,10 +331,10 @@ export function Activities() {
               <TabsTrigger value="cultural">Cultural</TabsTrigger>
               <TabsTrigger value="environmental">Environmental</TabsTrigger>
               <TabsTrigger value="adventure">Adventure</TabsTrigger>
-              <TabsTrigger value="generated">
+              {/* <TabsTrigger value="generated">
                 Generated For You
                 {generatedItineraryCount > 0 ? ` (${generatedItineraryCount})` : ""}
-              </TabsTrigger>
+              </TabsTrigger> */}
             </TabsList>
           </Tabs>
         </div>
@@ -314,102 +349,77 @@ export function Activities() {
         ) : error ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
-              <p className="text-red-600 font-semibold">{error}</p>
+              <p className="font-semibold text-red-600">{error}</p>
               <button
                 onClick={() => window.location.reload()}
-                className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                className="mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700"
               >
                 Retry
               </button>
             </div>
           </div>
         ) : selectedCategory === "generated" ? (
-          itineraryHistory.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-              {itineraryHistory.map((savedItinerary) => (
-                <div
-                  key={savedItinerary.generatedAt}
-                  className="rounded-3xl border border-sky-100 bg-white p-6 shadow-sm"
-                >
-                  <div className="flex flex-col gap-4">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge className="bg-sky-600 text-white hover:bg-sky-600">
-                            AI itinerary
-                          </Badge>
-                          <Badge variant="secondary" className="rounded-full">
-                            {savedItinerary.provider === "openai-rag"
-                              ? "RAG-backed"
-                              : savedItinerary.provider === "openai-prompt"
-                                ? "AI generated"
-                                : "Fallback suggestions"}
-                          </Badge>
-                          {itinerary?.generatedAt === savedItinerary.generatedAt && (
-                            <Badge variant="outline" className="rounded-full">
-                              Active
-                            </Badge>
-                          )}
-                        </div>
-                        <div>
-                          <h3 className="text-2xl font-semibold text-gray-900">
-                            {savedItinerary.title}
-                          </h3>
-                          <p className="mt-2 text-sm text-gray-600">
-                            {savedItinerary.summary}
-                          </p>
-                        </div>
-                        <p className="text-sm text-gray-700">
-                          {savedItinerary.rationale}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Generated {new Date(savedItinerary.generatedAt).toLocaleString()}
-                        </p>
-                      </div>
-
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => handleUseGeneratedItinerary(savedItinerary)}
-                      >
-                        Prioritize This Plan
-                      </Button>
-                    </div>
-
-                    <div className="grid gap-3 md:grid-cols-3">
-                      {savedItinerary.recommendedActivities.map((recommendation) => (
-                        <div
-                          key={`${savedItinerary.generatedAt}-${recommendation.activityId}`}
-                          className="rounded-2xl border border-gray-100 bg-gray-50 p-4"
-                        >
-                          <h4 className="font-semibold text-gray-900">
-                            {recommendation.activityName}
-                          </h4>
-                          <p className="mt-2 text-sm text-gray-600">
-                            {recommendation.reason}
-                          </p>
-                          {recommendation.matchTags.length > 0 && (
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {recommendation.matchTags.map((tag) => (
-                                <Badge key={tag} variant="secondary" className="rounded-full">
-                                  {tag}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    {savedItinerary.sources.length > 0 && (
-                      <p className="text-xs text-gray-500">
-                        Knowledge base sources:{" "}
-                        {savedItinerary.sources.map((source) => source.fileName).join(", ")}
-                      </p>
+          itinerary ? (
+            <div className="rounded-3xl border border-sky-100 bg-white p-6 shadow-sm">
+              <div className="flex flex-col gap-4">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge className="bg-sky-600 text-white hover:bg-sky-600">
+                      AI itinerary
+                    </Badge>
+                    {providerLabel && (
+                      <Badge variant="secondary" className="rounded-full">
+                        {providerLabel}
+                      </Badge>
                     )}
                   </div>
+                  <div className="grid gap-3">
+                    {itineraryOverview.map((item) => (
+                      <div
+                        key={item.label}
+                        className="rounded-2xl border border-gray-100 bg-gray-50 p-4"
+                      >
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">
+                          {item.label}
+                        </p>
+                        <p className={`mt-2 ${item.valueClassName}`}>
+                          {item.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Generated {new Date(itinerary.generatedAt).toLocaleString()}
+                  </p>
                 </div>
-              ))}
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  {itinerary.recommendedActivities.map((recommendation, index) => (
+                    <div
+                      key={`${itinerary.generatedAt}-${recommendation.activityId}`}
+                      className="rounded-2xl border border-gray-100 bg-gray-50 p-4"
+                    >
+                      <h4 className="font-semibold text-gray-900">
+                        {recommendation.activityName}
+                      </h4>
+                      <p className="mt-2 text-sm font-medium text-emerald-700">
+                        Suggested time:{" "}
+                        {getSuggestedTimeLabel(recommendation.suggestedTime, index)}
+                      </p>
+                      <p className="mt-2 text-sm text-gray-600">
+                        {recommendation.reason}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                {itinerary.sources.length > 0 && (
+                  <p className="text-xs text-gray-500">
+                    Knowledge base sources:{" "}
+                    {itinerary.sources.map((source) => source.fileName).join(", ")}
+                  </p>
+                )}
+              </div>
             </div>
           ) : (
             <div className="rounded-3xl border border-dashed border-sky-200 bg-sky-50/60 p-10 text-center">
@@ -418,7 +428,7 @@ export function Activities() {
               </h3>
               <p className="mt-3 text-sm text-gray-600">
                 Generate an itinerary from your guest preferences and it will be
-                stored here.
+                shown here.
               </p>
               <Button
                 type="button"
@@ -430,7 +440,7 @@ export function Activities() {
             </div>
           )
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {personalizedActivities.map((activity) => (
               <ActivityCard
                 key={activity.id}

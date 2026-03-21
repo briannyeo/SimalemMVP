@@ -73,6 +73,16 @@ type GuestPreferences = {
   notes?: string;
 };
 
+function getSuggestedTime(index: number) {
+  const suggestedTimes = [
+    '8:30 AM to 10:00 AM',
+    '11:00 AM to 1:00 PM',
+    '3:00 PM to 5:00 PM',
+  ];
+
+  return suggestedTimes[index] ?? 'Flexible timing';
+}
+
 function formatDuration(durationMinutes: number) {
   const hours = durationMinutes / 60;
 
@@ -83,9 +93,17 @@ function formatDuration(durationMinutes: number) {
   return `${hours} hours`;
 }
 
+function normalizeActivityId(value: unknown) {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  return String(value).trim();
+}
+
 function mapDbActivityToFrontend(dbActivity: ActivityRecord) {
   return {
-    id: dbActivity.id,
+    id: normalizeActivityId(dbActivity.id),
     name: dbActivity.name,
     description: dbActivity.description,
     duration: formatDuration(dbActivity.duration_minutes),
@@ -190,7 +208,7 @@ function buildFallbackItinerary(
       preferences.notes?.trim()
         ? `Built around the guest notes: ${preferences.notes.trim()}`
         : 'Built from the guest’s selected interests and the live resort activity catalog.',
-    recommendedActivities: rankedActivities.map(({ activity, matchTags }) => ({
+    recommendedActivities: rankedActivities.map(({ activity, matchTags }, index) => ({
       activityId: activity.id,
       activityName: activity.name,
       reason:
@@ -198,6 +216,7 @@ function buildFallbackItinerary(
           ? `Matches: ${matchTags.join(', ')}.`
           : 'A balanced option from the current activity catalog.',
       matchTags,
+      suggestedTime: getSuggestedTime(index),
     })),
     provider: 'local-fallback',
     model: 'rules-based-fallback',
@@ -241,11 +260,16 @@ function sanitizeItinerary(
   model: string,
   sources: Array<{ fileName: string; score?: number; snippet?: string }>,
 ) {
-  const activityIndex = new Map(activities.map((activity) => [activity.id, activity]));
+  const activityIndex = new Map(
+    activities.map((activity) => [normalizeActivityId(activity.id), activity]),
+  );
   const recommendations = Array.isArray(candidate?.recommendedActivities)
     ? candidate.recommendedActivities
-        .map((recommendation: any) => {
-          const activity = activityIndex.get(recommendation?.activityId);
+        .map((recommendation: any, index: number) => {
+          const normalizedRecommendationId = normalizeActivityId(
+            recommendation?.activityId,
+          );
+          const activity = activityIndex.get(normalizedRecommendationId);
 
           if (!activity) {
             return null;
@@ -261,6 +285,11 @@ function sanitizeItinerary(
             matchTags: Array.isArray(recommendation?.matchTags)
               ? recommendation.matchTags.filter((tag: unknown) => typeof tag === 'string')
               : [],
+            suggestedTime:
+              typeof recommendation?.suggestedTime === 'string' &&
+              recommendation.suggestedTime.trim()
+                ? recommendation.suggestedTime.trim()
+                : getSuggestedTime(index),
           };
         })
         .filter(Boolean)
@@ -343,7 +372,7 @@ registerPost(`${SERVER_ENDPOINT}/ai-itinerary`, async (c) => {
           effort: 'low',
         },
         instructions:
-          'You are a resort itinerary planner. Build a concise itinerary recommendation grounded in the supplied resort activity catalog and any file_search results. Recommend exactly 3 activities. Only recommend activities whose IDs exist in the catalog. Return valid JSON with keys title, summary, rationale, and recommendedActivities. recommendedActivities must be an array of objects with activityId, reason, and matchTags.',
+          'You are a resort itinerary planner. Build a concise itinerary recommendation grounded in the supplied resort activity catalog and any file_search results. Recommend exactly 3 activities. Only recommend activities whose IDs exist in the catalog. Return valid JSON with keys title, summary, rationale, and recommendedActivities. recommendedActivities must be an array of objects with activityId, reason, matchTags, and suggestedTime. suggestedTime should be a clear guest-facing time window such as 8:30 AM to 10:00 AM.',
         input: `Guest interests: ${(preferences.selectedInterests ?? []).join(', ') || 'none provided'}\nGuest notes: ${preferences.notes?.trim() || 'none provided'}\n\nCurrent resort activity catalog:\n${activityCatalog}`,
         tools,
         include: vectorStoreId ? ['file_search_call.results'] : [],
