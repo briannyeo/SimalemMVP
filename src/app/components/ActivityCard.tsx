@@ -11,6 +11,7 @@ import { Badge } from "./ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { Leaf, Users } from "lucide-react";
 import type { Activity } from "../../types";
+import { formatDurationDisplay } from "../../utils/formatters";
 
 interface ActivityCardProps {
   activity: Activity;
@@ -62,7 +63,7 @@ export function ActivityCard({
           <div className="flex-1">
             <CardTitle className="text-lg">{activity.name}</CardTitle>
             <CardDescription className="mt-1">
-              {activity.duration} • ${activity.price}
+              {formatDurationDisplay(activity.duration)} • ${activity.price}
             </CardDescription>
           </div>
           <Badge variant="secondary" className="shrink-0">
@@ -72,18 +73,18 @@ export function ActivityCard({
       </CardHeader>
 
       <CardContent>
-        <p className="text-sm text-gray-600 mb-4">{activity.description}</p>
+        <p className="mb-4 text-sm text-gray-600">{activity.description}</p>
 
         <div className="flex flex-col gap-3">
           <div className="flex items-start gap-2">
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 flex-shrink-0">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-50">
               <Users className="h-4 w-4 text-blue-600" />
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="text-xs font-medium text-gray-500">Community</div>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="text-sm font-semibold text-blue-600 cursor-help underline decoration-dotted">
+                  <div className="cursor-help text-sm font-semibold text-blue-600 underline decoration-dotted">
                     {activity.communityImpact}
                   </div>
                 </TooltipTrigger>
@@ -96,16 +97,16 @@ export function ActivityCard({
           </div>
 
           <div className="flex items-start gap-2">
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 flex-shrink-0">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-emerald-50">
               <Leaf className="h-4 w-4 text-emerald-600" />
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="text-xs font-medium text-gray-500">
                 Environmental
               </div>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="text-sm font-semibold text-emerald-600 cursor-help underline decoration-dotted">
+                  <div className="cursor-help text-sm font-semibold text-emerald-600 underline decoration-dotted">
                     {activity.environmentalImpact}
                   </div>
                 </TooltipTrigger>

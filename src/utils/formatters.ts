@@ -5,18 +5,51 @@
 /**
  * Convert duration in minutes to human-readable format
  * @param minutes - Duration in minutes
- * @returns Formatted duration string (e.g., "2 hours", "2.5 hours")
+ * @returns Formatted duration string (e.g., "1 hour 30 mins")
  */
 export function formatDuration(minutes: number): string {
-  const hours = minutes / 60;
-  
-  if (hours === Math.floor(hours)) {
-    // Whole hours (e.g., 2 hours, 3 hours)
-    return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
-  } else {
-    // Fractional hours (e.g., 2.5 hours, 3.5 hours)
-    return `${hours} hours`;
+  const roundedMinutes = Math.round(minutes);
+  const hours = Math.floor(roundedMinutes / 60);
+  const remainingMinutes = roundedMinutes % 60;
+
+  if (hours === 0) {
+    return `${remainingMinutes} mins`;
   }
+
+  if (remainingMinutes === 0) {
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+  }
+
+  return `${hours} ${hours === 1 ? 'hour' : 'hours'} ${remainingMinutes} mins`;
+}
+
+export function formatDurationDisplay(duration: string | number): string {
+  if (typeof duration === 'number' && Number.isFinite(duration)) {
+    return formatDuration(duration);
+  }
+
+  const trimmedDuration = duration.trim();
+  const minutesMatch = trimmedDuration.match(
+    /^(\d+(?:\.\d+)?)\s*(min|mins|minute|minutes)$/i,
+  );
+
+  if (minutesMatch) {
+    return formatDuration(Number(minutesMatch[1]));
+  }
+
+  const hoursMatch = trimmedDuration.match(
+    /^(\d+(?:\.\d+)?)\s*(hour|hours)$/i,
+  );
+
+  if (hoursMatch) {
+    return formatDuration(Number(hoursMatch[1]) * 60);
+  }
+
+  if (/^\d+(?:\.\d+)?$/.test(trimmedDuration)) {
+    return formatDuration(Number(trimmedDuration));
+  }
+
+  return trimmedDuration;
 }
 
 /**

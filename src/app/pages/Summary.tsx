@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { useBooking } from '../context/BookingContext';
 import { ActivityCard } from '../components/ActivityCard';
 import type { Activity } from '../../types';
+import { formatDurationDisplay } from '../../utils/formatters';
 
 export function Summary() {
   const { bookedActivities, removeActivity } = useBooking();
@@ -486,7 +487,7 @@ export function Summary() {
                                 {activity.description}
                               </div>
                               <div className="flex items-center gap-4 text-xs text-gray-500">
-                                <span>Time: {activity.duration}</span>
+                                <span>Time: {formatDurationDisplay(activity.duration)}</span>
                                 <span>Price: ${activity.price}</span>
                                 <span>Community: {activity.communityImpact}</span>
                                 <span>

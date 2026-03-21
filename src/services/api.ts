@@ -10,6 +10,8 @@ import type {
   Activity,
   AiItinerary,
   ActivityReview,
+  CreateActivityReviewInput,
+  CreateSharedItineraryInput,
   SharedItinerary,
   GuestInterestProfile,
   ActivitiesResponse,
@@ -94,6 +96,40 @@ export async function fetchActivityReviews(): Promise<ActivityReview[]> {
 export async function fetchSharedItineraries(): Promise<SharedItinerary[]> {
   const response = await fetchFromServer<ItinerariesResponse>('shared-itineraries');
   return response.itineraries || [];
+}
+
+/**
+ * Create a new activity review
+ */
+export async function createActivityReview(
+  review: CreateActivityReviewInput,
+): Promise<ActivityReview> {
+  const response = await fetchFromServer<{ review: ActivityReview }>(
+    'activity-reviews',
+    {
+      method: 'POST',
+      body: JSON.stringify({ review }),
+    },
+  );
+
+  return response.review;
+}
+
+/**
+ * Share a new itinerary to the community hub
+ */
+export async function createSharedItinerary(
+  itinerary: CreateSharedItineraryInput,
+): Promise<SharedItinerary> {
+  const response = await fetchFromServer<{ itinerary: SharedItinerary }>(
+    'shared-itineraries',
+    {
+      method: 'POST',
+      body: JSON.stringify({ itinerary }),
+    },
+  );
+
+  return response.itinerary;
 }
 
 /**

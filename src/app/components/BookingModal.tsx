@@ -11,6 +11,7 @@ import { Button } from "./ui/button";
 import { Calendar } from "./ui/calendar";
 import { Activity } from "../context/BookingContext";
 import { Calendar as CalendarIcon, Clock } from "lucide-react";
+import { formatDurationDisplay } from "../../utils/formatters";
 
 interface BookingModalProps {
   activity: Activity | null;
@@ -138,7 +139,7 @@ export function BookingModal({
               )}
               {activity && (
                 <p>
-                  <strong>Duration:</strong> {activity.duration}
+                  <strong>Duration:</strong> {formatDurationDisplay(activity.duration)}
                 </p>
               )}
             </div>

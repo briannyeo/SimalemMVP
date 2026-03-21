@@ -53,6 +53,23 @@ export interface SharedItinerary {
   tags: string[];
 }
 
+export interface CreateActivityReviewInput {
+  activityId: string;
+  userName: string;
+  userAvatar?: string;
+  rating: number;
+  comment: string;
+}
+
+export interface CreateSharedItineraryInput {
+  userName: string;
+  userAvatar?: string;
+  title: string;
+  description: string;
+  activityIds: string[];
+  tags: string[];
+}
+
 // ============================================================================
 // Admin/Guest Types
 // ============================================================================

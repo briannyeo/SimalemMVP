@@ -73,6 +73,23 @@ type GuestPreferences = {
   notes?: string;
 };
 
+type CreateActivityReviewInput = {
+  activityId?: string;
+  userName?: string;
+  userAvatar?: string;
+  rating?: number;
+  comment?: string;
+};
+
+type CreateSharedItineraryInput = {
+  userName?: string;
+  userAvatar?: string;
+  title?: string;
+  description?: string;
+  activityIds?: string[];
+  tags?: string[];
+};
+
 function getSuggestedTime(index: number) {
   const suggestedTimes = [
     '8:30 AM to 10:00 AM',
@@ -84,13 +101,19 @@ function getSuggestedTime(index: number) {
 }
 
 function formatDuration(durationMinutes: number) {
-  const hours = durationMinutes / 60;
+  const roundedMinutes = Math.round(durationMinutes);
+  const hours = Math.floor(roundedMinutes / 60);
+  const remainingMinutes = roundedMinutes % 60;
 
-  if (hours === Math.floor(hours)) {
+  if (hours === 0) {
+    return `${remainingMinutes} mins`;
+  }
+
+  if (remainingMinutes === 0) {
     return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
   }
 
-  return `${hours} hours`;
+  return `${hours} ${hours === 1 ? 'hour' : 'hours'} ${remainingMinutes} mins`;
 }
 
 function normalizeActivityId(value: unknown) {
@@ -99,6 +122,12 @@ function normalizeActivityId(value: unknown) {
   }
 
   return String(value).trim();
+}
+
+function buildAvatarUrl(name: string) {
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    name,
+  )}&background=059669&color=ffffff`;
 }
 
 function mapDbActivityToFrontend(dbActivity: ActivityRecord) {
@@ -112,6 +141,72 @@ function mapDbActivityToFrontend(dbActivity: ActivityRecord) {
     environmentalImpact: dbActivity.environmental_impact,
     image: dbActivity.image_url,
     category: dbActivity.category,
+  };
+}
+
+function mapReviewToFrontend(review: any) {
+  return {
+    id: normalizeActivityId(review.id),
+    activityId: normalizeActivityId(review.activity_id),
+    activityName: review.activities?.name || 'Unknown Activity',
+    userName: review.author_name,
+    userAvatar: review.author_avatar_url,
+    rating: review.rating,
+    comment: review.comment,
+    date: review.review_date,
+    helpful: review.helpful_count,
+  };
+}
+
+async function fetchSharedItineraryById(sharedItineraryId: string) {
+  const { data: dbItinerary, error: itineraryError } = await supabase
+    .from('shared_itineraries')
+    .select('*')
+    .eq('id', sharedItineraryId)
+    .single();
+
+  if (itineraryError) {
+    throw new Error(itineraryError.message);
+  }
+
+  const { data: itemsData, error: itemsError } = await supabase
+    .from('shared_itinerary_items')
+    .select(`
+      sort_order,
+      activities (
+        id,
+        name,
+        description,
+        duration_minutes,
+        price,
+        community_impact,
+        environmental_impact,
+        image_url,
+        category
+      )
+    `)
+    .eq('shared_itinerary_id', sharedItineraryId)
+    .order('sort_order', { ascending: true });
+
+  if (itemsError) {
+    throw new Error(itemsError.message);
+  }
+
+  const activities = itemsData.map((item) =>
+    mapDbActivityToFrontend(item.activities as ActivityRecord),
+  );
+
+  return {
+    id: normalizeActivityId(dbItinerary.id),
+    userName: dbItinerary.author_name,
+    userAvatar: dbItinerary.author_avatar_url,
+    title: dbItinerary.title,
+    description: dbItinerary.description,
+    activities,
+    likes: dbItinerary.likes_count,
+    comments: dbItinerary.comments_count,
+    sharedDate: dbItinerary.shared_date,
+    tags: dbItinerary.tags || [],
   };
 }
 
@@ -466,22 +561,73 @@ registerGet(`${SERVER_ENDPOINT}/activity-reviews`, async (c) => {
     }
 
     // Transform database format to frontend ActivityReview format
-    const reviews = reviewsData.map((dbReview) => ({
-      id: dbReview.id,
-      activityId: dbReview.activity_id,
-      activityName: dbReview.activities?.name || 'Unknown Activity',
-      userName: dbReview.author_name,
-      userAvatar: dbReview.author_avatar_url,
-      rating: dbReview.rating,
-      comment: dbReview.comment,
-      date: dbReview.review_date,
-      helpful: dbReview.helpful_count,
-    }));
+    const reviews = reviewsData.map(mapReviewToFrontend);
 
     return c.json({ reviews });
   } catch (error) {
     console.error('Unexpected error while fetching activity reviews:', error);
     return c.json({ error: 'Internal server error', details: error.message }, 500);
+  }
+});
+
+registerPost(`${SERVER_ENDPOINT}/activity-reviews`, async (c) => {
+  try {
+    const body = await c.req.json();
+    const review = (body?.review ?? {}) as CreateActivityReviewInput;
+    const activityId = normalizeActivityId(review.activityId);
+    const userName = review.userName?.trim() || 'Simalem Guest';
+    const comment = review.comment?.trim() || '';
+    const rating = Number(review.rating);
+
+    if (!activityId) {
+      return c.json({ error: 'Activity is required' }, 400);
+    }
+
+    if (!comment) {
+      return c.json({ error: 'Review comment is required' }, 400);
+    }
+
+    if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+      return c.json({ error: 'Rating must be between 1 and 5' }, 400);
+    }
+
+    const avatarUrl = review.userAvatar?.trim() || buildAvatarUrl(userName);
+
+    const { data: insertedReview, error: insertError } = await supabase
+      .from('activity_reviews')
+      .insert({
+        activity_id: activityId,
+        author_name: userName,
+        author_avatar_url: avatarUrl,
+        rating,
+        comment,
+        review_date: new Date().toISOString(),
+        helpful_count: 0,
+      })
+      .select(`
+        id,
+        activity_id,
+        author_name,
+        author_avatar_url,
+        rating,
+        comment,
+        review_date,
+        helpful_count,
+        activities (
+          name
+        )
+      `)
+      .single();
+
+    if (insertError) {
+      console.error('Error creating activity review:', insertError);
+      return c.json({ error: 'Failed to create activity review', details: insertError.message }, 500);
+    }
+
+    return c.json({ review: mapReviewToFrontend(insertedReview) });
+  } catch (error) {
+    console.error('Unexpected error while creating activity review:', error);
+    return c.json({ error: 'Failed to create activity review', details: error.message }, 500);
   }
 });
 
@@ -501,48 +647,13 @@ registerGet(`${SERVER_ENDPOINT}/shared-itineraries`, async (c) => {
     // For each itinerary, fetch its items with activity details
     const itineraries = await Promise.all(
       itinerariesData.map(async (dbItinerary) => {
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('shared_itinerary_items')
-          .select(`
-            sort_order,
-            activities (
-              id,
-              name,
-              description,
-              duration_minutes,
-              price,
-              community_impact,
-              environmental_impact,
-              image_url,
-              category
-            )
-          `)
-          .eq('shared_itinerary_id', dbItinerary.id)
-          .order('sort_order', { ascending: true });
-
-        if (itemsError) {
+        try {
+          return await fetchSharedItineraryById(normalizeActivityId(dbItinerary.id));
+        } catch (itemsError) {
           console.error(`Error fetching items for itinerary ${dbItinerary.id}:`, itemsError);
           return null;
         }
-
-        // Transform items to Activity format
-        const activities = itemsData.map((item) =>
-          mapDbActivityToFrontend(item.activities as ActivityRecord),
-        );
-
-        return {
-          id: dbItinerary.id,
-          userName: dbItinerary.author_name,
-          userAvatar: dbItinerary.author_avatar_url,
-          title: dbItinerary.title,
-          description: dbItinerary.description,
-          activities,
-          likes: dbItinerary.likes_count,
-          comments: dbItinerary.comments_count,
-          sharedDate: dbItinerary.shared_date,
-          tags: dbItinerary.tags || [],
-        };
-      })
+      }),
     );
 
     // Filter out any null results from errors
@@ -552,6 +663,106 @@ registerGet(`${SERVER_ENDPOINT}/shared-itineraries`, async (c) => {
   } catch (error) {
     console.error('Unexpected error while fetching shared itineraries:', error);
     return c.json({ error: 'Internal server error', details: error.message }, 500);
+  }
+});
+
+registerPost(`${SERVER_ENDPOINT}/shared-itineraries`, async (c) => {
+  try {
+    const body = await c.req.json();
+    const itinerary = (body?.itinerary ?? {}) as CreateSharedItineraryInput;
+    const userName = itinerary.userName?.trim() || 'Simalem Guest';
+    const title = itinerary.title?.trim() || '';
+    const description = itinerary.description?.trim() || '';
+    const activityIds = Array.isArray(itinerary.activityIds)
+      ? itinerary.activityIds.map(normalizeActivityId).filter(Boolean)
+      : [];
+    const tags = Array.isArray(itinerary.tags)
+      ? itinerary.tags
+          .filter((tag): tag is string => typeof tag === 'string')
+          .map((tag) => tag.trim())
+          .filter(Boolean)
+      : [];
+
+    if (!title) {
+      return c.json({ error: 'Title is required' }, 400);
+    }
+
+    if (!description) {
+      return c.json({ error: 'Description is required' }, 400);
+    }
+
+    if (activityIds.length === 0) {
+      return c.json({ error: 'At least one activity is required to share an itinerary' }, 400);
+    }
+
+    const { data: matchingActivities, error: activitiesError } = await supabase
+      .from('activities')
+      .select('id')
+      .in('id', activityIds);
+
+    if (activitiesError) {
+      console.error('Error validating itinerary activities:', activitiesError);
+      return c.json({ error: 'Failed to validate itinerary activities', details: activitiesError.message }, 500);
+    }
+
+    const validActivityIds = new Set(
+      (matchingActivities ?? []).map((activity) => normalizeActivityId(activity.id)),
+    );
+    const orderedValidActivityIds = activityIds.filter((activityId) =>
+      validActivityIds.has(activityId),
+    );
+
+    if (orderedValidActivityIds.length === 0) {
+      return c.json({ error: 'Selected activities are no longer available' }, 400);
+    }
+
+    const avatarUrl = itinerary.userAvatar?.trim() || buildAvatarUrl(userName);
+
+    const { data: insertedItinerary, error: itineraryError } = await supabase
+      .from('shared_itineraries')
+      .insert({
+        author_name: userName,
+        author_avatar_url: avatarUrl,
+        title,
+        description,
+        likes_count: 0,
+        comments_count: 0,
+        shared_date: new Date().toISOString(),
+        tags,
+      })
+      .select('id')
+      .single();
+
+    if (itineraryError) {
+      console.error('Error creating shared itinerary:', itineraryError);
+      return c.json({ error: 'Failed to share itinerary', details: itineraryError.message }, 500);
+    }
+
+    const sharedItineraryId = normalizeActivityId(insertedItinerary.id);
+    const itemsPayload = orderedValidActivityIds.map((activityId, index) => ({
+      shared_itinerary_id: sharedItineraryId,
+      activity_id: activityId,
+      booking_date: null,
+      booking_time: null,
+      sort_order: index,
+    }));
+
+    const { error: itemsError } = await supabase
+      .from('shared_itinerary_items')
+      .insert(itemsPayload);
+
+    if (itemsError) {
+      await supabase.from('shared_itineraries').delete().eq('id', sharedItineraryId);
+      console.error('Error creating shared itinerary items:', itemsError);
+      return c.json({ error: 'Failed to share itinerary', details: itemsError.message }, 500);
+    }
+
+    const sharedItinerary = await fetchSharedItineraryById(sharedItineraryId);
+
+    return c.json({ itinerary: sharedItinerary });
+  } catch (error) {
+    console.error('Unexpected error while creating shared itinerary:', error);
+    return c.json({ error: 'Failed to share itinerary', details: error.message }, 500);
   }
 });
 
