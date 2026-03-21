@@ -9,7 +9,7 @@ export function Login() {
   const { login } = useAuth();
 
   const handleGuestLogin = () => {
-    navigate('/guest-interests');
+    navigate('/guest-stay');
   };
 
   const handleSupervisorLogin = () => {
@@ -38,7 +38,7 @@ export function Login() {
               </div>
               <CardTitle className="text-2xl">Guest</CardTitle>
               <CardDescription>
-                Tell us your interests before exploring activities
+                Add your stay details and interests before exploring activities
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -49,6 +49,10 @@ export function Login() {
                 Continue as Guest
               </Button>
               <ul className="mt-4 space-y-2 text-sm text-gray-600">
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                  Enter your stay dates
+                </li>
                 <li className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
                   Share your interests

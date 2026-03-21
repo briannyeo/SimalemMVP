@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Link } from "react-router";
 import { Button } from "../components/ui/button";
 import {
   Card,
@@ -10,47 +11,110 @@ import {
 import { Separator } from "../components/ui/separator";
 import { Check, CreditCard, Heart, Leaf, Users } from "lucide-react";
 import { toast } from "sonner";
+import { useBooking } from "../context/BookingContext";
+import { useGuestStay } from "../context/GuestStayContext";
+import { formatDurationDisplay } from "../../utils/formatters";
 
-const mockStayData = {
-  guestName: "Sarah Johnson",
-  roomNumber: "203",
-  checkInDate: "Feb 18, 2026",
-  checkOutDate: "Feb 22, 2026",
-  nights: 4,
-  roomRate: 180,
-  charges: [
-    { date: "Feb 18", description: "Room - Deluxe Lake View", amount: 180 },
-    { date: "Feb 18", description: "Farm-sourced Dinner", amount: 45 },
-    { date: "Feb 19", description: "Room - Deluxe Lake View", amount: 180 },
-    {
-      date: "Feb 19",
-      description: "Traditional Batak Cooking Class",
-      amount: 75,
-    },
-    { date: "Feb 19", description: "Farm-sourced Lunch", amount: 35 },
-    { date: "Feb 20", description: "Room - Deluxe Lake View", amount: 180 },
-    { date: "Feb 20", description: "Lake Toba Kayaking", amount: 60 },
-    { date: "Feb 20", description: "Farm-sourced Dinner", amount: 45 },
-    { date: "Feb 21", description: "Room - Deluxe Lake View", amount: 180 },
-    { date: "Feb 23", description: "ATV Trail", amount: 50 },
-    { date: "Feb 21", description: "Farm-sourced Breakfast", amount: 25 },
-  ],
-  impactSummary: {
-    lowIntensityActivities: 2,
-    communityPartnerActivities: 1,
-    farmSourcedMeals: 4,
-  },
-};
+const ROOM_RATE = 180;
+const LUNCH_RATE = 35;
+const DINNER_RATE = 45;
+
+function parseStayDate(date: string) {
+  return new Date(`${date}T00:00:00`);
+}
+
+function formatStayDate(date: string | null) {
+  if (!date) {
+    return "-";
+  }
+
+  return parseStayDate(date).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatChargeDate(date: Date) {
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function getStayLength(checkInDate: string | null, checkOutDate: string | null) {
+  if (!checkInDate || !checkOutDate) {
+    return 0;
+  }
+
+  const differenceInMs =
+    parseStayDate(checkOutDate).getTime() - parseStayDate(checkInDate).getTime();
+
+  return Math.max(0, Math.round(differenceInMs / 86400000));
+}
+
+function buildBoardCharges(checkInDate: string | null, checkOutDate: string | null) {
+  if (!checkInDate || !checkOutDate) {
+    return [] as Array<{ date: string; description: string; amount: number }>;
+  }
+
+  const charges: Array<{ date: string; description: string; amount: number }> = [];
+  const currentDate = parseStayDate(checkInDate);
+  const departureDate = parseStayDate(checkOutDate);
+
+  while (currentDate < departureDate) {
+    const chargeDate = formatChargeDate(currentDate);
+
+    charges.push(
+      { date: chargeDate, description: "Room - Deluxe Lake View", amount: ROOM_RATE },
+      { date: chargeDate, description: "Farm-sourced Lunch", amount: LUNCH_RATE },
+      { date: chargeDate, description: "Farm-sourced Dinner", amount: DINNER_RATE },
+    );
+
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return charges;
+}
 
 export function Checkout() {
   const [isProcessing, setIsProcessing] = useState(false);
+  const { bookedActivities } = useBooking();
+  const { profile, hasStayDetails } = useGuestStay();
 
-  const subtotal = mockStayData.charges.reduce(
-    (sum, charge) => sum + charge.amount,
-    0,
+  const stayCharges = useMemo(
+    () => buildBoardCharges(profile.checkInDate, profile.checkOutDate),
+    [profile.checkInDate, profile.checkOutDate],
   );
+
+  const stayNights = useMemo(
+    () => getStayLength(profile.checkInDate, profile.checkOutDate),
+    [profile.checkInDate, profile.checkOutDate],
+  );
+
+  const staySubtotal = useMemo(
+    () => stayCharges.reduce((sum, charge) => sum + charge.amount, 0),
+    [stayCharges],
+  );
+
+  const activitySubtotal = useMemo(
+    () => bookedActivities.reduce((sum, activity) => sum + activity.price, 0),
+    [bookedActivities],
+  );
+
+  const subtotal = staySubtotal + activitySubtotal;
   const tax = subtotal * 0.1;
   const total = subtotal + tax;
+
+  const lowImpactActivities = bookedActivities.filter(
+    (activity) => activity.environmentalImpact === "Low",
+  ).length;
+  const communityPartnerActivities = bookedActivities.filter(
+    (activity) => activity.communityImpact === "Direct Local Partner",
+  ).length;
+  const farmSourcedMeals = stayCharges.filter((charge) =>
+    charge.description.toLowerCase().includes("farm-sourced"),
+  ).length;
 
   const handleCompleteCheckout = () => {
     setIsProcessing(true);
@@ -66,9 +130,9 @@ export function Checkout() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-12">
+      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 py-12 text-white">
         <div className="container mx-auto px-4">
-          <h1 className="text-3xl font-bold mb-2">Final Checkout</h1>
+          <h1 className="mb-2 text-3xl font-bold">Final Checkout</h1>
           <p className="text-white/90">
             Thank you for staying with us at Simalem Resort
           </p>
@@ -76,8 +140,28 @@ export function Checkout() {
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
+        {!hasStayDetails ? (
+          <Card className="mx-auto mb-8 max-w-3xl border-sky-200 bg-sky-50">
+            <CardHeader>
+              <CardTitle>Complete your stay details first</CardTitle>
+              <CardDescription>
+                Add your name and stay dates so we can calculate room, lunch, and
+                dinner charges automatically before checkout.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3 sm:flex-row">
+              <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
+                <Link to="/guest-stay?returnTo=/checkout">Add stay details</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to="/activities">Back to activities</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        <div className="grid gap-8 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
             <Card>
               <CardHeader>
                 <CardTitle>Stay Details</CardTitle>
@@ -86,19 +170,19 @@ export function Checkout() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-500">Guest Name</p>
-                    <p className="font-semibold">{mockStayData.guestName}</p>
+                    <p className="font-semibold">{profile.guestName || "-"}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Room Number</p>
-                    <p className="font-semibold">{mockStayData.roomNumber}</p>
+                    <p className="font-semibold">{profile.roomNumber}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Check-In</p>
-                    <p className="font-semibold">{mockStayData.checkInDate}</p>
+                    <p className="font-semibold">{formatStayDate(profile.checkInDate)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Check-Out</p>
-                    <p className="font-semibold">{mockStayData.checkOutDate}</p>
+                    <p className="font-semibold">{formatStayDate(profile.checkOutDate)}</p>
                   </div>
                 </div>
               </CardContent>
@@ -123,8 +207,7 @@ export function Checkout() {
                     <p className="text-gray-700">
                       You selected{" "}
                       <span className="font-semibold text-emerald-700">
-                        {mockStayData.impactSummary.lowIntensityActivities} low
-                        environmental-intensity experiences
+                        {lowImpactActivities} low environmental-intensity experiences
                       </span>
                     </p>
                   </div>
@@ -136,8 +219,7 @@ export function Checkout() {
                     <p className="text-gray-700">
                       You joined{" "}
                       <span className="font-semibold text-blue-700">
-                        {mockStayData.impactSummary.communityPartnerActivities} activity
-                        led by a local community partner
+                        {communityPartnerActivities} activities led by local community partners
                       </span>
                     </p>
                   </div>
@@ -149,7 +231,7 @@ export function Checkout() {
                     <p className="text-gray-700">
                       You chose{" "}
                       <span className="font-semibold text-amber-700">
-                        farm-sourced dining during your stay
+                        {farmSourcedMeals} farm-sourced dining moments during your stay
                       </span>
                     </p>
                   </div>
@@ -157,12 +239,12 @@ export function Checkout() {
 
                 <Separator className="bg-emerald-200" />
 
-                <p className="text-sm text-gray-700 italic">
+                <p className="text-sm italic text-gray-700">
                   Your choices support Simalem&apos;s commitment to environmental
                   stewardship and community uplift.
                 </p>
 
-                <p className="text-base font-semibold text-emerald-900 text-center">
+                <p className="text-center text-base font-semibold text-emerald-900">
                   Thank you for being part of our purpose.
                 </p>
               </CardContent>
@@ -172,24 +254,76 @@ export function Checkout() {
               <CardHeader>
                 <CardTitle>Itemized Charges</CardTitle>
                 <CardDescription>
-                  {mockStayData.nights} nights • {mockStayData.checkInDate} -{" "}
-                  {mockStayData.checkOutDate}
+                  {stayNights} nights | {formatStayDate(profile.checkInDate)} -{" "}
+                  {formatStayDate(profile.checkOutDate)}
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {mockStayData.charges.map((charge, index) => (
-                    <div
-                      key={index}
-                      className="flex justify-between text-sm py-2 border-b border-gray-100 last:border-0"
-                    >
-                      <div>
-                        <span className="text-gray-500 text-xs">{charge.date}</span>
-                        <p className="text-gray-700">{charge.description}</p>
-                      </div>
-                      <span className="font-medium">${charge.amount}</span>
+              <CardContent className="space-y-6">
+                <div>
+                  <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-gray-500">
+                    Room And Boarding
+                  </h3>
+                  {stayCharges.length > 0 ? (
+                    <div className="space-y-2">
+                      {stayCharges.map((charge, index) => (
+                        <div
+                          key={`${charge.date}-${charge.description}-${index}`}
+                          className="flex justify-between border-b border-gray-100 py-2 text-sm last:border-0"
+                        >
+                          <div>
+                            <span className="text-xs text-gray-500">{charge.date}</span>
+                            <p className="text-gray-700">{charge.description}</p>
+                          </div>
+                          <span className="font-medium">${charge.amount}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                      Add your stay dates to generate room and board charges.
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-gray-500">
+                    Activities Booked
+                  </h3>
+                  {bookedActivities.length > 0 ? (
+                    <div className="space-y-2">
+                      {bookedActivities.map((activity, index) => (
+                        <div
+                          key={`${activity.id}-${activity.bookingTime ?? "unbooked"}-${index}`}
+                          className="flex justify-between border-b border-gray-100 py-2 text-sm last:border-0"
+                        >
+                          <div>
+                            <span className="text-xs text-gray-500">
+                              {activity.bookingDate
+                                ? new Date(activity.bookingDate).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                  })
+                                : "Scheduled activity"}
+                              {activity.bookingTime ? ` | ${activity.bookingTime}` : ""}
+                            </span>
+                            <p className="text-gray-700">
+                              {activity.name} ({formatDurationDisplay(activity.duration)})
+                            </p>
+                          </div>
+                          <span className="font-medium">${activity.price}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                      No activities booked yet.
+                    </div>
+                  )}
+
+                  <div className="mt-4 flex justify-between rounded-lg bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+                    <span>Total Activities Booked</span>
+                    <span>${activitySubtotal.toFixed(2)}</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -207,23 +341,17 @@ export function Checkout() {
               <CardContent className="space-y-6">
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">
-                      Room ({mockStayData.nights} nights)
-                    </span>
-                    <span className="font-medium">
-                      ${mockStayData.roomRate * mockStayData.nights}
-                    </span>
+                    <span className="text-gray-600">Room & Boarding</span>
+                    <span className="font-medium">${staySubtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Activities & Dining</span>
-                    <span className="font-medium">
-                      ${subtotal - mockStayData.roomRate * mockStayData.nights}
-                    </span>
+                    <span className="text-gray-600">Activities Booked</span>
+                    <span className="font-medium">${activitySubtotal.toFixed(2)}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Subtotal</span>
-                    <span className="font-medium">${subtotal}</span>
+                    <span className="font-medium">${subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Tax (10%)</span>
@@ -236,15 +364,15 @@ export function Checkout() {
                   </div>
                 </div>
 
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm font-medium text-gray-700 mb-2">
+                <div className="rounded-lg bg-gray-50 p-4">
+                  <p className="mb-2 text-sm font-medium text-gray-700">
                     Payment Method
                   </p>
                   <div className="flex items-center gap-3">
                     <CreditCard className="h-5 w-5 text-gray-500" />
                     <div>
                       <p className="text-sm font-medium">Card on File</p>
-                      <p className="text-xs text-gray-500">•••• 4242</p>
+                      <p className="text-xs text-gray-500">**** 4242</p>
                     </div>
                   </div>
                 </div>
@@ -253,14 +381,14 @@ export function Checkout() {
                   className="w-full bg-emerald-600 hover:bg-emerald-700"
                   size="lg"
                   onClick={handleCompleteCheckout}
-                  disabled={isProcessing}
+                  disabled={isProcessing || !hasStayDetails}
                 >
                   {isProcessing
                     ? "Processing..."
                     : `Complete Checkout - $${total.toFixed(2)}`}
                 </Button>
 
-                <p className="text-xs text-gray-500 text-center">
+                <p className="text-center text-xs text-gray-500">
                   By completing checkout, you confirm all charges are accurate
                 </p>
               </CardContent>

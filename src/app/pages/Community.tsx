@@ -34,17 +34,24 @@ import {
 import { toast } from "sonner";
 import { formatDurationDisplay } from "../../utils/formatters";
 import { useBooking } from "../context/BookingContext";
+import { useGuestStay } from "../context/GuestStayContext";
 
 const COMMUNITY_PROFILE_KEY = "simalem_community_profile";
+const DEFAULT_COMMUNITY_NAME = "Simalem Guest";
 
 type CommunityProfile = {
   userName: string;
   userAvatar: string;
 };
 
-function getStoredCommunityProfile(): CommunityProfile {
+function isDefaultCommunityName(userName: string) {
+  const trimmedUserName = userName.trim();
+  return !trimmedUserName || trimmedUserName === DEFAULT_COMMUNITY_NAME;
+}
+
+function getStoredCommunityProfile(fallbackName: string): CommunityProfile {
   const fallbackProfile = {
-    userName: "Simalem Guest",
+    userName: fallbackName.trim() || DEFAULT_COMMUNITY_NAME,
     userAvatar: "",
   };
 
@@ -88,6 +95,7 @@ function buildDerivedTags(activities: Activity[]) {
 export function Community() {
   const navigate = useNavigate();
   const { bookedActivities } = useBooking();
+  const { profile: guestStayProfile } = useGuestStay();
   const [selectedTab, setSelectedTab] = useState("itineraries");
   const [selectedActivityFilter, setSelectedActivityFilter] = useState("all");
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -96,7 +104,9 @@ export function Community() {
   const [loading, setLoading] = useState(true);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [isSubmittingItinerary, setIsSubmittingItinerary] = useState(false);
-  const [profile, setProfile] = useState<CommunityProfile>(getStoredCommunityProfile);
+  const [profile, setProfile] = useState<CommunityProfile>(() =>
+    getStoredCommunityProfile(guestStayProfile.guestName),
+  );
   const [reviewActivityId, setReviewActivityId] = useState("");
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
@@ -142,6 +152,25 @@ export function Community() {
   useEffect(() => {
     localStorage.setItem(COMMUNITY_PROFILE_KEY, JSON.stringify(profile));
   }, [profile]);
+
+  useEffect(() => {
+    const registeredGuestName = guestStayProfile.guestName.trim();
+
+    if (!registeredGuestName) {
+      return;
+    }
+
+    setProfile((current) => {
+      if (!isDefaultCommunityName(current.userName) || current.userName === registeredGuestName) {
+        return current;
+      }
+
+      return {
+        ...current,
+        userName: registeredGuestName,
+      };
+    });
+  }, [guestStayProfile.guestName]);
 
   const handleProfileChange = (field: keyof CommunityProfile, value: string) => {
     setProfile((current) => ({

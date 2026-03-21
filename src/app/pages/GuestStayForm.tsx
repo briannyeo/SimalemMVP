@@ -1,0 +1,208 @@
+import { useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
+import { CalendarDays, ChevronLeft, Hotel, UserRound } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useGuestStay } from '../context/GuestStayContext';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+
+function formatStayPreview(checkInDate: string, checkOutDate: string) {
+  const startDate = new Date(`${checkInDate}T00:00:00`);
+  const endDate = new Date(`${checkOutDate}T00:00:00`);
+  const differenceInMs = endDate.getTime() - startDate.getTime();
+  const nights = Math.max(0, Math.round(differenceInMs / 86400000));
+
+  return `${nights} ${nights === 1 ? 'night' : 'nights'}`;
+}
+
+export function GuestStayForm() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { login, userRole } = useAuth();
+  const { profile, saveProfile } = useGuestStay();
+  const [guestName, setGuestName] = useState(profile.guestName);
+  const [checkInDate, setCheckInDate] = useState(profile.checkInDate ?? '');
+  const [checkOutDate, setCheckOutDate] = useState(profile.checkOutDate ?? '');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const returnTo = useMemo(
+    () => searchParams.get('returnTo') || '/activities',
+    [searchParams],
+  );
+
+  const stayPreview =
+    checkInDate && checkOutDate ? formatStayPreview(checkInDate, checkOutDate) : null;
+
+  const handleContinue = () => {
+    const trimmedName = guestName.trim();
+
+    if (!trimmedName || !checkInDate || !checkOutDate) {
+      setErrorMessage('Please complete your name, check-in date, and check-out date.');
+      return;
+    }
+
+    if (new Date(`${checkOutDate}T00:00:00`) <= new Date(`${checkInDate}T00:00:00`)) {
+      setErrorMessage('Check-out date must be after check-in date.');
+      return;
+    }
+
+    saveProfile({
+      guestName: trimmedName,
+      checkInDate,
+      checkOutDate,
+      roomNumber: profile.roomNumber || '203',
+    });
+
+    if (userRole !== 'guest') {
+      login('guest');
+    }
+
+    const nextPath = new URLSearchParams({ returnTo }).toString();
+    navigate(`/guest-interests?${nextPath}`);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-emerald-50 px-4 py-10">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+        <button
+          type="button"
+          onClick={() => navigate(userRole === 'guest' ? '/activities' : '/')}
+          className="inline-flex items-center gap-2 self-start text-sm font-medium text-gray-600 transition-colors hover:text-emerald-700"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          {userRole === 'guest' ? 'Back to activities' : 'Back to sign in'}
+        </button>
+
+        <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+          <Card className="border-0 bg-white/90 shadow-xl shadow-sky-100/70">
+            <CardHeader className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100">
+                  <Hotel className="h-6 w-6 text-sky-700" />
+                </div>
+                <div>
+                  <CardTitle className="text-3xl">Tell us about your stay</CardTitle>
+                  <CardDescription className="mt-2 max-w-2xl text-base text-gray-600">
+                    We use your stay dates to prepare checkout charges for your room,
+                    lunch, and dinner automatically for each day you are with us.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="guest-name">Guest name</Label>
+                <Input
+                  id="guest-name"
+                  value={guestName}
+                  onChange={(event) => {
+                    setGuestName(event.target.value);
+                    setErrorMessage('');
+                  }}
+                  placeholder="Enter your full name"
+                  autoComplete="name"
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="check-in-date">Check-in date</Label>
+                  <Input
+                    id="check-in-date"
+                    type="date"
+                    value={checkInDate}
+                    onChange={(event) => {
+                      setCheckInDate(event.target.value);
+                      setErrorMessage('');
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="check-out-date">Check-out date</Label>
+                  <Input
+                    id="check-out-date"
+                    type="date"
+                    value={checkOutDate}
+                    onChange={(event) => {
+                      setCheckOutDate(event.target.value);
+                      setErrorMessage('');
+                    }}
+                  />
+                </div>
+              </div>
+
+              {errorMessage ? (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {errorMessage}
+                </div>
+              ) : null}
+
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button
+                  onClick={handleContinue}
+                  size="lg"
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  Continue to guest interests
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  onClick={() => navigate(`/guest-interests?${new URLSearchParams({ returnTo }).toString()}`)}
+                >
+                  Skip for now
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* <div className="grid gap-6">
+            <Card className="border-0 bg-gray-900 text-white shadow-xl shadow-gray-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <CalendarDays className="h-5 w-5 text-emerald-300" />
+                  What this unlocks
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm text-gray-200">
+                <div className="rounded-2xl bg-white/10 p-4">
+                  Checkout totals become dynamic, based on the exact dates you are staying.
+                </div>
+                <div className="rounded-2xl bg-white/10 p-4">
+                  Your room charge, lunch, and dinner are added automatically for each stay day.
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-sky-100 bg-white/90">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-xl text-gray-900">
+                  <UserRound className="h-5 w-5 text-sky-600" />
+                  Stay preview
+                </CardTitle>
+                <CardDescription>
+                  We keep this on your device so you can return and adjust it anytime.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-gray-700">
+                <div className="flex items-center justify-between rounded-2xl bg-sky-50 px-4 py-3">
+                  <span>Room assignment</span>
+                  <span className="font-semibold text-sky-800">{profile.roomNumber}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-3">
+                  <span>Estimated stay</span>
+                  <span className="font-semibold text-emerald-800">
+                    {stayPreview ?? 'Select dates to preview'}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </div> */}
+        </div>
+      </div>
+    </div>
+  );
+}

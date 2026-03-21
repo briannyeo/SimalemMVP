@@ -4,17 +4,20 @@ import { BookingProvider } from './context/BookingContext';
 import { AuthProvider } from './context/AuthContext';
 import { AiItineraryProvider } from './context/AiItineraryContext';
 import { GuestInterestProvider } from './context/GuestInterestContext';
+import { GuestStayProvider } from './context/GuestStayContext';
 
 export default function App() {
   return (
     <AuthProvider>
-      <GuestInterestProvider>
-        <AiItineraryProvider>
-          <BookingProvider>
-            <RouterProvider router={router} />
-          </BookingProvider>
-        </AiItineraryProvider>
-      </GuestInterestProvider>
+      <GuestStayProvider>
+        <GuestInterestProvider>
+          <AiItineraryProvider>
+            <BookingProvider>
+              <RouterProvider router={router} />
+            </BookingProvider>
+          </AiItineraryProvider>
+        </GuestInterestProvider>
+      </GuestStayProvider>
     </AuthProvider>
   );
 }

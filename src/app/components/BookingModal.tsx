@@ -64,7 +64,7 @@ export function BookingModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-xl overflow-x-hidden overflow-y-auto p-4 sm:p-6 lg:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="text-2xl">
             Book {activity?.name}
@@ -74,9 +74,9 @@ export function BookingModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid md:grid-cols-2 gap-6 py-4">
+        <div className="grid gap-6 py-4 lg:grid-cols-[minmax(0,1fr)_260px]">
           {/* Date Selection */}
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2 mb-4">
               <CalendarIcon className="h-5 w-5 text-emerald-600" />
               <h3 className="font-semibold text-lg">Select Date</h3>
@@ -91,7 +91,7 @@ export function BookingModal({
           </div>
 
           {/* Time Selection */}
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2 mb-4">
               <Clock className="h-5 w-5 text-emerald-600" />
               <h3 className="font-semibold text-lg">Select Time</h3>
@@ -101,7 +101,7 @@ export function BookingModal({
                 <button
                   key={time}
                   onClick={() => setSelectedTime(time)}
-                  className={`px-4 py-2 rounded-lg border-2 transition-all ${
+                  className={`rounded-lg border-2 px-3 py-2 text-sm transition-all sm:px-4 ${
                     selectedTime === time
                       ? "border-emerald-600 bg-emerald-50 text-emerald-700 font-semibold"
                       : "border-gray-200 hover:border-emerald-300 hover:bg-gray-50"

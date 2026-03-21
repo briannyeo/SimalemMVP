@@ -103,6 +103,14 @@ export interface GuestInterestProfile {
   updatedAt: string | null;
 }
 
+export interface GuestStayProfile {
+  guestName: string;
+  checkInDate: string | null;
+  checkOutDate: string | null;
+  roomNumber: string;
+  updatedAt: string | null;
+}
+
 export interface AiItineraryRecommendation {
   activityId: string;
   activityName: string;
