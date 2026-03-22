@@ -37,11 +37,39 @@ const environmentalImpactDescriptions: Record<string, string> = {
     "This activity involves motorised transport or higher energy consumption, resulting in greater environmental intensity relative to other resort activities.",
 };
 
+function getEnvironmentalImpactStyles(environmentalImpact: Activity["environmentalImpact"]) {
+  if (environmentalImpact === "Low") {
+    return {
+      iconBackgroundClassName: "bg-emerald-50",
+      iconClassName: "text-emerald-600",
+      textClassName: "text-emerald-600",
+    };
+  }
+
+  if (environmentalImpact === "Medium") {
+    return {
+      iconBackgroundClassName: "bg-amber-50",
+      iconClassName: "text-amber-500",
+      textClassName: "text-amber-600",
+    };
+  }
+
+  return {
+    iconBackgroundClassName: "bg-red-50",
+    iconClassName: "text-red-600",
+    textClassName: "text-red-600",
+  };
+}
+
 export function ActivityCard({
   activity,
   onBook,
   hideBookButton = false,
 }: ActivityCardProps) {
+  const environmentalImpactStyles = getEnvironmentalImpactStyles(
+    activity.environmentalImpact,
+  );
+
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       <div className="aspect-video w-full overflow-hidden">
@@ -97,8 +125,10 @@ export function ActivityCard({
           </div>
 
           <div className="flex items-start gap-2">
-            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-emerald-50">
-              <Leaf className="h-4 w-4 text-emerald-600" />
+            <div
+              className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${environmentalImpactStyles.iconBackgroundClassName}`}
+            >
+              <Leaf className={`h-4 w-4 ${environmentalImpactStyles.iconClassName}`} />
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-xs font-medium text-gray-500">
@@ -106,7 +136,9 @@ export function ActivityCard({
               </div>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="cursor-help text-sm font-semibold text-emerald-600 underline decoration-dotted">
+                  <div
+                    className={`cursor-help text-sm font-semibold underline decoration-dotted ${environmentalImpactStyles.textClassName}`}
+                  >
                     {activity.environmentalImpact}
                   </div>
                 </TooltipTrigger>
