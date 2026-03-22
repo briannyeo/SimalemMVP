@@ -6,6 +6,7 @@ import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Textarea } from "../components/ui/textarea";
 import { Input } from "../components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../components/ui/tooltip";
 import {
   Heart,
   MessageCircle,
@@ -43,6 +44,48 @@ type CommunityProfile = {
   userName: string;
   userAvatar: string;
 };
+
+const communityImpactDescriptions: Record<string, string> = {
+  "Direct Local Partner":
+    "This activity is operated in partnership with external local guides, farmers, or artisans. Revenue contributes directly to community-based stakeholders.",
+  "Internal Community Support":
+    "This activity is delivered by Simalem staff and supports internal employment, fair wages, and community uplift within the resort ecosystem.",
+  "No Direct Community Link":
+    "This activity does not involve a specific local partner or targeted community program beyond standard resort operations.",
+};
+
+const environmentalImpactDescriptions: Record<string, string> = {
+  Low:
+    "This activity involves minimal resource consumption and no motorised transport. It has limited environmental disturbance relative to other offerings.",
+  Medium:
+    "This activity involves moderate resource use or managed transport. Environmental impact is controlled but higher than non-motorised alternatives.",
+  High:
+    "This activity involves motorised transport or higher energy consumption, resulting in greater environmental intensity relative to other resort activities.",
+};
+
+function getEnvironmentalImpactStyles(environmentalImpact: Activity["environmentalImpact"]) {
+  if (environmentalImpact === "Low") {
+    return {
+      iconBackgroundClassName: "bg-emerald-50",
+      iconClassName: "text-emerald-600",
+      textClassName: "text-emerald-600",
+    };
+  }
+
+  if (environmentalImpact === "Medium") {
+    return {
+      iconBackgroundClassName: "bg-amber-50",
+      iconClassName: "text-amber-500",
+      textClassName: "text-amber-600",
+    };
+  }
+
+  return {
+    iconBackgroundClassName: "bg-red-50",
+    iconClassName: "text-red-600",
+    textClassName: "text-red-600",
+  };
+}
 
 function isDefaultCommunityName(userName: string) {
   const trimmedUserName = userName.trim();
@@ -471,22 +514,64 @@ export function Community() {
                                 <p className="mt-1 text-xs text-gray-600">
                                   {formatDurationDisplay(activity.duration)} - ${activity.price}
                                 </p>
-                                <div className="mt-1 flex items-center gap-3">
-                                  <div className="flex items-center gap-1 text-xs">
-                                    <Users className="h-3 w-3 text-blue-600" />
-                                    <span className="font-medium text-blue-600">
-                                      {activity.communityImpact === "Direct Local Partner"
-                                        ? "DLP"
-                                        : activity.communityImpact === "Internal Community Support"
-                                          ? "ICS"
-                                          : "NDL"}
-                                    </span>
+                                <div className="mt-2 flex flex-col gap-2">
+                                  <div className="flex items-start gap-2">
+                                    <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-50">
+                                      <Users className="h-3.5 w-3.5 text-blue-600" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="text-[11px] font-medium text-gray-500">
+                                        Community
+                                      </div>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <div className="cursor-help text-xs font-semibold text-blue-600 underline decoration-dotted">
+                                            {activity.communityImpact}
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="max-w-xs bg-gray-900 text-white">
+                                          {communityImpactDescriptions[activity.communityImpact] ||
+                                            "No description available."}
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </div>
                                   </div>
-                                  <div className="flex items-center gap-1 text-xs">
-                                    <Leaf className="h-3 w-3 text-emerald-600" />
-                                    <span className="font-medium text-emerald-600">
-                                      {activity.environmentalImpact}
-                                    </span>
+
+                                  <div className="flex items-start gap-2">
+                                    <div
+                                      className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full ${
+                                        getEnvironmentalImpactStyles(activity.environmentalImpact)
+                                          .iconBackgroundClassName
+                                      }`}
+                                    >
+                                      <Leaf
+                                        className={`h-3.5 w-3.5 ${
+                                          getEnvironmentalImpactStyles(activity.environmentalImpact)
+                                            .iconClassName
+                                        }`}
+                                      />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="text-[11px] font-medium text-gray-500">
+                                        Environmental
+                                      </div>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <div
+                                            className={`cursor-help text-xs font-semibold underline decoration-dotted ${
+                                              getEnvironmentalImpactStyles(activity.environmentalImpact)
+                                                .textClassName
+                                            }`}
+                                          >
+                                            {activity.environmentalImpact}
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="max-w-xs bg-gray-900 text-white">
+                                          {environmentalImpactDescriptions[activity.environmentalImpact] ||
+                                            "No description available."}
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
