@@ -28,6 +28,13 @@ import {
   TabsList,
   TabsTrigger,
 } from "../components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
 import { fetchGuestBookings } from "../../services/api";
 import type { GuestBooking } from "../../types";
 import { getBoardSubtotal } from "../../utils/stayCharges";
@@ -98,6 +105,58 @@ export function Admin() {
   const purposeEngagementRatio = guestBookings.length > 0
     ? ((parseFloat(avgCommunityRatio) + parseFloat(avgEnvironmentalRatio)) / 2).toFixed(2)
     : "0.00";
+  const activityPerformance = useMemo(() => {
+    const performanceMap = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        category: string;
+        bookings: number;
+        revenue: number;
+        guestIds: Set<string>;
+      }
+    >();
+
+    guestBookings.forEach((guest) => {
+      guest.activities.forEach((activity) => {
+        const currentActivity = performanceMap.get(activity.id);
+
+        if (currentActivity) {
+          currentActivity.bookings += 1;
+          currentActivity.revenue += activity.price;
+          currentActivity.guestIds.add(guest.guestId);
+          return;
+        }
+
+        performanceMap.set(activity.id, {
+          id: activity.id,
+          name: activity.name,
+          category: activity.category,
+          bookings: 1,
+          revenue: activity.price,
+          guestIds: new Set([guest.guestId]),
+        });
+      });
+    });
+
+    return Array.from(performanceMap.values())
+      .map((activity) => ({
+        ...activity,
+        uniqueGuests: activity.guestIds.size,
+      }))
+      .sort((left, right) => {
+        if (right.bookings !== left.bookings) {
+          return right.bookings - left.bookings;
+        }
+
+        return right.revenue - left.revenue;
+      });
+  }, [guestBookings]);
+  const topBookedActivity = activityPerformance[0] ?? null;
+  const topRevenueActivity = [...activityPerformance].sort(
+    (left, right) => right.revenue - left.revenue,
+  )[0] ?? null;
 
   const selectedGuestData = useMemo(
     () =>
@@ -222,8 +281,8 @@ export function Admin() {
         <Tabs defaultValue="all" className="space-y-4">
           <TabsList>
             <TabsTrigger value="all">All Guests</TabsTrigger>
-            <TabsTrigger value="details">
-              Guest Details
+            <TabsTrigger value="activity-rates">
+              Activity Rates
             </TabsTrigger>
           </TabsList>
 
@@ -300,8 +359,7 @@ export function Admin() {
                         return (
                           <TableRow
                             key={guest.guestId}
-                            className="cursor-pointer hover:bg-gray-50"
-                            onClick={() => setSelectedGuest(guest.guestId)}
+                            className="hover:bg-gray-50"
                           >
                             <TableCell>
                               <div>
@@ -366,28 +424,135 @@ export function Admin() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="details">
-            {selectedGuestData ? (
-              <div className="space-y-4">
+          <TabsContent value="activity-rates">
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Card>
                   <CardHeader>
+                    <CardDescription>Most Popular Activity</CardDescription>
                     <CardTitle>
-                      {selectedGuestData.guestName}
+                      {topBookedActivity?.name ?? "No activity bookings yet"}
                     </CardTitle>
-                    <CardDescription>
-                      {selectedGuestData.email || "Not provided"} | Room{" "}
-                      {selectedGuestData.roomNumber} | Check-in:{" "}
-                      {new Date(
-                        selectedGuestData.checkInDate,
-                      ).toLocaleDateString()}{" "}
-                      | Checkout:{" "}
-                      {new Date(
-                        selectedGuestData.checkoutDate,
-                      ).toLocaleDateString()}
-                    </CardDescription>
                   </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-gray-600">
+                      {topBookedActivity
+                        ? `${topBookedActivity.bookings} bookings across ${topBookedActivity.uniqueGuests} guest stays`
+                        : "Guest activity bookings will appear here once live data comes in."}
+                    </p>
+                  </CardContent>
                 </Card>
 
+                <Card>
+                  <CardHeader>
+                    <CardDescription>Highest Activity Revenue</CardDescription>
+                    <CardTitle>
+                      {topRevenueActivity?.name ?? "No activity revenue yet"}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-gray-600">
+                      {topRevenueActivity
+                        ? `$${topRevenueActivity.revenue} from ${topRevenueActivity.bookings} bookings`
+                        : "Revenue ranking will appear once guests start booking activities."}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Activity Booking Rates</CardTitle>
+                  <CardDescription>
+                    Ranked by booking volume, with revenue contribution for each activity
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? (
+                    <div className="py-12 text-center text-gray-500">
+                      Loading activity performance...
+                    </div>
+                  ) : error ? (
+                    <div className="py-12 text-center">
+                      <p className="font-medium text-red-600">{error}</p>
+                    </div>
+                  ) : activityPerformance.length === 0 ? (
+                    <div className="py-12 text-center text-gray-500">
+                      No activity bookings yet. This ranking will populate from live guest
+                      booking data.
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Rank</TableHead>
+                          <TableHead>Activity</TableHead>
+                          <TableHead>Category</TableHead>
+                          <TableHead className="text-center">Bookings</TableHead>
+                          <TableHead className="text-center">Guests</TableHead>
+                          <TableHead className="text-right">Revenue</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {activityPerformance.map((activity, index) => (
+                          <TableRow key={activity.id}>
+                            <TableCell className="font-semibold text-gray-600">
+                              #{index + 1}
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {activity.name}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary">{activity.category}</Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {activity.bookings}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {activity.uniqueGuests}
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              ${activity.revenue}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      <Dialog
+        open={Boolean(selectedGuestData)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedGuest(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[85vh] max-w-4xl overflow-y-auto">
+          {selectedGuestData && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{selectedGuestData.guestName}</DialogTitle>
+                <DialogDescription>
+                  {selectedGuestData.email || "Not provided"} | Room{" "}
+                  {selectedGuestData.roomNumber} | Check-in:{" "}
+                  {new Date(
+                    selectedGuestData.checkInDate,
+                  ).toLocaleDateString()}{" "}
+                  | Checkout:{" "}
+                  {new Date(
+                    selectedGuestData.checkoutDate,
+                  ).toLocaleDateString()}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
                 <Card>
                   <CardHeader>
                     <CardTitle>Booked Activities</CardTitle>
@@ -457,16 +622,10 @@ export function Admin() {
                   </CardContent>
                 </Card>
               </div>
-            ) : (
-              <Card>
-                <CardContent className="py-12 text-center text-gray-500">
-                  Select a guest from the "All Guests" tab to view their booking details
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
-      </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
