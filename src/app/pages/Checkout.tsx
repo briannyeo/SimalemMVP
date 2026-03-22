@@ -14,14 +14,11 @@ import { toast } from "sonner";
 import { useBooking } from "../context/BookingContext";
 import { useGuestStay } from "../context/GuestStayContext";
 import { formatDurationDisplay } from "../../utils/formatters";
-
-const ROOM_RATE = 180;
-const LUNCH_RATE = 35;
-const DINNER_RATE = 45;
-
-function parseStayDate(date: string) {
-  return new Date(`${date}T00:00:00`);
-}
+import {
+  buildBoardCharges,
+  getStayLength,
+  parseStayDate,
+} from "../../utils/stayCharges";
 
 function formatStayDate(date: string | null) {
   if (!date) {
@@ -33,48 +30,6 @@ function formatStayDate(date: string | null) {
     day: "numeric",
     year: "numeric",
   });
-}
-
-function formatChargeDate(date: Date) {
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function getStayLength(checkInDate: string | null, checkOutDate: string | null) {
-  if (!checkInDate || !checkOutDate) {
-    return 0;
-  }
-
-  const differenceInMs =
-    parseStayDate(checkOutDate).getTime() - parseStayDate(checkInDate).getTime();
-
-  return Math.max(0, Math.round(differenceInMs / 86400000));
-}
-
-function buildBoardCharges(checkInDate: string | null, checkOutDate: string | null) {
-  if (!checkInDate || !checkOutDate) {
-    return [] as Array<{ date: string; description: string; amount: number }>;
-  }
-
-  const charges: Array<{ date: string; description: string; amount: number }> = [];
-  const currentDate = parseStayDate(checkInDate);
-  const departureDate = parseStayDate(checkOutDate);
-
-  while (currentDate < departureDate) {
-    const chargeDate = formatChargeDate(currentDate);
-
-    charges.push(
-      { date: chargeDate, description: "Room - Deluxe Lake View", amount: ROOM_RATE },
-      { date: chargeDate, description: "Farm-sourced Lunch", amount: LUNCH_RATE },
-      { date: chargeDate, description: "Farm-sourced Dinner", amount: DINNER_RATE },
-    );
-
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-
-  return charges;
 }
 
 export function Checkout() {

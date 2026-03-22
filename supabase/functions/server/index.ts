@@ -90,6 +90,17 @@ type CreateSharedItineraryInput = {
   tags?: string[];
 };
 
+type GuestBookingInput = {
+  guestId?: string;
+  guestName?: string;
+  email?: string;
+  checkInDate?: string;
+  checkoutDate?: string;
+  roomNumber?: string;
+  activities?: any[];
+  updatedAt?: string;
+};
+
 function getSuggestedTime(index: number) {
   const suggestedTimes = [
     '8:30 AM to 10:00 AM',
@@ -158,6 +169,54 @@ function mapReviewToFrontend(review: any) {
   };
 }
 
+function getGuestBookingStorageKey(guestId: string) {
+  return `guest-booking:${guestId}`;
+}
+
+function sanitizeGuestBooking(
+  candidate: GuestBookingInput,
+  activities: ReturnType<typeof mapDbActivityToFrontend>[],
+) {
+  const activityIndex = new Map(
+    activities.map((activity) => [normalizeActivityId(activity.id), activity]),
+  );
+  const sanitizedActivities = Array.isArray(candidate.activities)
+    ? candidate.activities
+        .map((activity: any) => {
+          const activityId = normalizeActivityId(activity?.id);
+          const liveActivity = activityIndex.get(activityId);
+
+          if (!liveActivity) {
+            return null;
+          }
+
+          return {
+            ...liveActivity,
+            bookingDate:
+              typeof activity?.bookingDate === 'string' && activity.bookingDate.trim()
+                ? activity.bookingDate
+                : undefined,
+            bookingTime:
+              typeof activity?.bookingTime === 'string' && activity.bookingTime.trim()
+                ? activity.bookingTime.trim()
+                : undefined,
+          };
+        })
+        .filter(Boolean)
+    : [];
+
+  return {
+    guestId: normalizeActivityId(candidate.guestId),
+    guestName: candidate.guestName?.trim() || 'Simalem Guest',
+    email: candidate.email?.trim() || 'Not provided',
+    checkInDate: candidate.checkInDate?.trim() || '',
+    checkoutDate: candidate.checkoutDate?.trim() || '',
+    roomNumber: candidate.roomNumber?.trim() || '203',
+    activities: sanitizedActivities,
+    updatedAt: candidate.updatedAt?.trim() || new Date().toISOString(),
+  };
+}
+
 async function fetchSharedItineraryById(sharedItineraryId: string) {
   const { data: dbItinerary, error: itineraryError } = await supabase
     .from('shared_itineraries')
@@ -172,18 +231,10 @@ async function fetchSharedItineraryById(sharedItineraryId: string) {
   const { data: itemsData, error: itemsError } = await supabase
     .from('shared_itinerary_items')
     .select(`
-      sort_order,
-      activities (
-        id,
-        name,
-        description,
-        duration_minutes,
-        price,
-        community_impact,
-        environmental_impact,
-        image_url,
-        category
-      )
+      activity_id,
+      booking_date,
+      booking_time,
+      sort_order
     `)
     .eq('shared_itinerary_id', sharedItineraryId)
     .order('sort_order', { ascending: true });
@@ -192,9 +243,60 @@ async function fetchSharedItineraryById(sharedItineraryId: string) {
     throw new Error(itemsError.message);
   }
 
-  const activities = itemsData.map((item) =>
-    mapDbActivityToFrontend(item.activities as ActivityRecord),
+  const activityIds = (itemsData ?? [])
+    .map((item: any) => normalizeActivityId(item.activity_id))
+    .filter(Boolean);
+
+  const { data: activitiesData, error: activitiesError } = activityIds.length > 0
+    ? await supabase
+        .from('activities')
+        .select(`
+          id,
+          name,
+          description,
+          duration_minutes,
+          price,
+          community_impact,
+          environmental_impact,
+          image_url,
+          category
+        `)
+        .in('id', activityIds)
+    : { data: [], error: null };
+
+  if (activitiesError) {
+    throw new Error(activitiesError.message);
+  }
+
+  const activityIndex = new Map(
+    (activitiesData ?? []).map((activity: any) => [
+      normalizeActivityId(activity.id),
+      activity as ActivityRecord,
+    ]),
   );
+
+  const activities = (itemsData ?? [])
+    .map((item: any) => {
+      const activityRecord = activityIndex.get(normalizeActivityId(item.activity_id));
+
+      if (!activityRecord) {
+        return null;
+      }
+
+      const activity = mapDbActivityToFrontend(activityRecord);
+
+      return {
+        ...activity,
+        bookingDate: item.booking_date
+          ? new Date(`${item.booking_date}T00:00:00`)
+          : undefined,
+        bookingTime:
+          typeof item.booking_time === 'string' && item.booking_time.trim()
+            ? item.booking_time.trim()
+            : undefined,
+      };
+    })
+    .filter(Boolean);
 
   return {
     id: normalizeActivityId(dbItinerary.id),
@@ -423,6 +525,69 @@ registerGet(`${SERVER_ENDPOINT}/activities`, async (c) => {
   }
 });
 
+registerGet(`${SERVER_ENDPOINT}/guest-bookings`, async (c) => {
+  try {
+    const { data, error } = await supabase
+      .from('kv_store_01df2f8f')
+      .select('key, value')
+      .like('key', 'guest-booking:%');
+
+    if (error) {
+      console.error('Error fetching guest bookings:', error);
+      return c.json({ error: 'Failed to fetch guest bookings', details: error.message }, 500);
+    }
+
+    const guestBookings = (data ?? [])
+      .map((entry: any) => entry.value)
+      .filter(Boolean)
+      .sort((left: any, right: any) => {
+        const leftTime = new Date(left?.updatedAt ?? 0).getTime();
+        const rightTime = new Date(right?.updatedAt ?? 0).getTime();
+        return rightTime - leftTime;
+      });
+
+    return c.json({ guestBookings });
+  } catch (error) {
+    console.error('Unexpected error while fetching guest bookings:', error);
+    return c.json({ error: 'Internal server error', details: error.message }, 500);
+  }
+});
+
+registerPost(`${SERVER_ENDPOINT}/guest-bookings`, async (c) => {
+  try {
+    const body = await c.req.json();
+    const candidateBooking = (body?.booking ?? {}) as GuestBookingInput;
+    const activitiesData = await fetchActiveActivitiesFromDb();
+    const activities = activitiesData.map(mapDbActivityToFrontend);
+    const guestBooking = sanitizeGuestBooking(candidateBooking, activities);
+
+    if (!guestBooking.guestId) {
+      return c.json({ error: 'Guest booking id is required' }, 400);
+    }
+
+    if (!guestBooking.checkInDate || !guestBooking.checkoutDate) {
+      return c.json({ error: 'Check-in and checkout dates are required' }, 400);
+    }
+
+    const { error } = await supabase
+      .from('kv_store_01df2f8f')
+      .upsert({
+        key: getGuestBookingStorageKey(guestBooking.guestId),
+        value: guestBooking,
+      });
+
+    if (error) {
+      console.error('Error storing guest booking:', error);
+      return c.json({ error: 'Failed to save guest booking', details: error.message }, 500);
+    }
+
+    return c.json({ guestBooking });
+  } catch (error) {
+    console.error('Unexpected error while saving guest booking:', error);
+    return c.json({ error: 'Failed to save guest booking', details: error.message }, 500);
+  }
+});
+
 registerPost(`${SERVER_ENDPOINT}/ai-itinerary`, async (c) => {
   try {
     const body = await c.req.json();
@@ -574,6 +739,7 @@ registerPost(`${SERVER_ENDPOINT}/activity-reviews`, async (c) => {
   try {
     const body = await c.req.json();
     const review = (body?.review ?? {}) as CreateActivityReviewInput;
+    const reviewId = crypto.randomUUID();
     const activityId = normalizeActivityId(review.activityId);
     const userName = review.userName?.trim() || 'Simalem Guest';
     const comment = review.comment?.trim() || '';
@@ -596,6 +762,7 @@ registerPost(`${SERVER_ENDPOINT}/activity-reviews`, async (c) => {
     const { data: insertedReview, error: insertError } = await supabase
       .from('activity_reviews')
       .insert({
+        id: reviewId,
         activity_id: activityId,
         author_name: userName,
         author_avatar_url: avatarUrl,
@@ -670,6 +837,7 @@ registerPost(`${SERVER_ENDPOINT}/shared-itineraries`, async (c) => {
   try {
     const body = await c.req.json();
     const itinerary = (body?.itinerary ?? {}) as CreateSharedItineraryInput;
+    const sharedItineraryId = crypto.randomUUID();
     const userName = itinerary.userName?.trim() || 'Simalem Guest';
     const title = itinerary.title?.trim() || '';
     const description = itinerary.description?.trim() || '';
@@ -721,6 +889,7 @@ registerPost(`${SERVER_ENDPOINT}/shared-itineraries`, async (c) => {
     const { data: insertedItinerary, error: itineraryError } = await supabase
       .from('shared_itineraries')
       .insert({
+        id: sharedItineraryId,
         author_name: userName,
         author_avatar_url: avatarUrl,
         title,
@@ -738,9 +907,10 @@ registerPost(`${SERVER_ENDPOINT}/shared-itineraries`, async (c) => {
       return c.json({ error: 'Failed to share itinerary', details: itineraryError.message }, 500);
     }
 
-    const sharedItineraryId = normalizeActivityId(insertedItinerary.id);
+    const normalizedSharedItineraryId = normalizeActivityId(insertedItinerary.id);
     const itemsPayload = orderedValidActivityIds.map((activityId, index) => ({
-      shared_itinerary_id: sharedItineraryId,
+      id: crypto.randomUUID(),
+      shared_itinerary_id: normalizedSharedItineraryId,
       activity_id: activityId,
       booking_date: null,
       booking_time: null,
@@ -752,12 +922,12 @@ registerPost(`${SERVER_ENDPOINT}/shared-itineraries`, async (c) => {
       .insert(itemsPayload);
 
     if (itemsError) {
-      await supabase.from('shared_itineraries').delete().eq('id', sharedItineraryId);
+      await supabase.from('shared_itineraries').delete().eq('id', normalizedSharedItineraryId);
       console.error('Error creating shared itinerary items:', itemsError);
       return c.json({ error: 'Failed to share itinerary', details: itemsError.message }, 500);
     }
 
-    const sharedItinerary = await fetchSharedItineraryById(sharedItineraryId);
+    const sharedItinerary = await fetchSharedItineraryById(normalizedSharedItineraryId);
 
     return c.json({ itinerary: sharedItinerary });
   } catch (error) {

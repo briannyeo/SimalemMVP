@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router";
 import { Mountain, LogOut } from "lucide-react";
 import { useAiItinerary } from "../context/AiItineraryContext";
 import { useAuth } from "../context/AuthContext";
+import { useBooking } from "../context/BookingContext";
 import { useGuestInterest } from "../context/GuestInterestContext";
 import { useGuestStay } from "../context/GuestStayContext";
 import { Button } from "./ui/button";
@@ -9,6 +10,7 @@ import { Button } from "./ui/button";
 export function Header() {
   const { clearAllItineraries } = useAiItinerary();
   const { userRole, logout } = useAuth();
+  const { clearBookings } = useBooking();
   const { clearProfile } = useGuestInterest();
   const { clearProfile: clearStayProfile } = useGuestStay();
   const location = useLocation();
@@ -18,6 +20,7 @@ export function Header() {
     if (userRole === "guest") {
       clearProfile();
       clearStayProfile();
+      clearBookings();
       clearAllItineraries();
       localStorage.removeItem("simalem_community_profile");
     }

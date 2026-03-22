@@ -8,6 +8,7 @@ import { Button } from "../components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useAiItinerary } from "../context/AiItineraryContext";
 import { useBooking } from "../context/BookingContext";
+import { useGuestStay } from "../context/GuestStayContext";
 import {
   doesActivityMatchInterest,
   guestInterestOptions,
@@ -72,6 +73,7 @@ export function Activities() {
   const { addActivity } = useBooking();
   const { itinerary } = useAiItinerary();
   const { profile, hasInterests } = useGuestInterest();
+  const { hasStayDetails } = useGuestStay();
   const location = useLocation();
   const navigate = useNavigate();
   const hasShownAiError = useRef(false);
@@ -117,6 +119,14 @@ export function Activities() {
   }, [location.state]);
 
   const handleBookClick = (activity: Activity) => {
+    if (!hasStayDetails) {
+      toast.error("Add your stay dates first", {
+        description: "Activity bookings are only available during your hotel stay.",
+      });
+      navigate("/guest-stay?returnTo=/activities");
+      return;
+    }
+
     setSelectedActivity(activity);
     setIsModalOpen(true);
   };

@@ -12,9 +12,11 @@ import type {
   ActivityReview,
   CreateActivityReviewInput,
   CreateSharedItineraryInput,
+  GuestBooking,
   SharedItinerary,
   GuestInterestProfile,
   ActivitiesResponse,
+  GuestBookingsResponse,
   ReviewsResponse,
   ItinerariesResponse,
 } from '../types';
@@ -55,6 +57,10 @@ async function fetchFromServer<T>(
       mergedHeaders.set(key, value);
     });
   }
+
+  if (init?.body && !mergedHeaders.has('Content-Type')) {
+    mergedHeaders.set('Content-Type', 'application/json');
+  }
   
   const response = await fetch(fullUrl, {
     ...init,
@@ -62,7 +68,20 @@ async function fetchFromServer<T>(
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch ${path}: ${response.statusText}`);
+    const errorText = await response.text();
+    let errorMessage = errorText || `Failed to fetch ${path}: ${response.statusText}`;
+
+    try {
+      const errorPayload = JSON.parse(errorText) as {
+        error?: string;
+        details?: string;
+      };
+      errorMessage = errorPayload.details
+        ? `${errorPayload.error ?? `Failed to fetch ${path}`}: ${errorPayload.details}`
+        : errorPayload.error ?? `Failed to fetch ${path}: ${response.statusText}`;
+    } catch {}
+
+    throw new Error(errorMessage);
   }
 
   const data = await response.json();
@@ -96,6 +115,31 @@ export async function fetchActivityReviews(): Promise<ActivityReview[]> {
 export async function fetchSharedItineraries(): Promise<SharedItinerary[]> {
   const response = await fetchFromServer<ItinerariesResponse>('shared-itineraries');
   return response.itineraries || [];
+}
+
+/**
+ * Fetch live guest bookings for the admin portal
+ */
+export async function fetchGuestBookings(): Promise<GuestBooking[]> {
+  const response = await fetchFromServer<GuestBookingsResponse>('guest-bookings');
+  return response.guestBookings || [];
+}
+
+/**
+ * Persist a guest booking snapshot for live supervisor reporting
+ */
+export async function upsertGuestBooking(
+  booking: GuestBooking,
+): Promise<GuestBooking> {
+  const response = await fetchFromServer<{ guestBooking: GuestBooking }>(
+    'guest-bookings',
+    {
+      method: 'POST',
+      body: JSON.stringify({ booking }),
+    },
+  );
+
+  return response.guestBooking;
 }
 
 /**

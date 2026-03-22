@@ -3,17 +3,21 @@ import type { GuestStayProfile } from '../../types';
 
 const STORAGE_KEY = 'simalem_guest_stay_profile';
 
-const defaultGuestStayProfile: GuestStayProfile = {
-  guestName: '',
-  checkInDate: null,
-  checkOutDate: null,
-  roomNumber: '203',
-  updatedAt: null,
-};
+function createDefaultGuestStayProfile(): GuestStayProfile {
+  return {
+    guestId: crypto.randomUUID(),
+    guestName: '',
+    checkInDate: null,
+    checkOutDate: null,
+    roomNumber: '203',
+    updatedAt: null,
+  };
+}
 
 interface GuestStayContextType {
   profile: GuestStayProfile;
-  saveProfile: (profile: Omit<GuestStayProfile, 'updatedAt'>) => void;
+  saveProfile: (profile: Omit<GuestStayProfile, 'updatedAt' | 'guestId'>) => void;
+  restoreProfile: (profile: GuestStayProfile) => void;
   clearProfile: () => void;
   hasStayDetails: boolean;
 }
@@ -24,13 +28,14 @@ function getStoredProfile(): GuestStayProfile {
   const savedProfile = localStorage.getItem(STORAGE_KEY);
 
   if (!savedProfile) {
-    return defaultGuestStayProfile;
+    return createDefaultGuestStayProfile();
   }
 
   try {
     const parsedProfile = JSON.parse(savedProfile) as GuestStayProfile;
 
     return {
+      guestId: parsedProfile.guestId ?? crypto.randomUUID(),
       guestName: parsedProfile.guestName ?? '',
       checkInDate: parsedProfile.checkInDate ?? null,
       checkOutDate: parsedProfile.checkOutDate ?? null,
@@ -38,7 +43,7 @@ function getStoredProfile(): GuestStayProfile {
       updatedAt: parsedProfile.updatedAt ?? null,
     };
   } catch {
-    return defaultGuestStayProfile;
+    return createDefaultGuestStayProfile();
   }
 }
 
@@ -49,7 +54,15 @@ export function GuestStayProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
   }, [profile]);
 
-  const saveProfile = (nextProfile: Omit<GuestStayProfile, 'updatedAt'>) => {
+  const saveProfile = (nextProfile: Omit<GuestStayProfile, 'updatedAt' | 'guestId'>) => {
+    setProfile({
+      guestId: profile.guestId,
+      ...nextProfile,
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
+  const restoreProfile = (nextProfile: GuestStayProfile) => {
     setProfile({
       ...nextProfile,
       updatedAt: new Date().toISOString(),
@@ -57,7 +70,7 @@ export function GuestStayProvider({ children }: { children: ReactNode }) {
   };
 
   const clearProfile = () => {
-    setProfile(defaultGuestStayProfile);
+    setProfile(createDefaultGuestStayProfile());
   };
 
   const hasStayDetails =
@@ -70,6 +83,7 @@ export function GuestStayProvider({ children }: { children: ReactNode }) {
       value={{
         profile,
         saveProfile,
+        restoreProfile,
         clearProfile,
         hasStayDetails,
       }}

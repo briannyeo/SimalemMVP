@@ -1,12 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { CalendarDays, ChevronLeft, Hotel, UserRound } from 'lucide-react';
+import { fetchGuestBookings } from '../../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useBooking } from '../context/BookingContext';
 import { useGuestStay } from '../context/GuestStayContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import type { GuestBooking } from '../../types';
 
 function formatStayPreview(checkInDate: string, checkOutDate: string) {
   const startDate = new Date(`${checkInDate}T00:00:00`);
@@ -17,15 +20,43 @@ function formatStayPreview(checkInDate: string, checkOutDate: string) {
   return `${nights} ${nights === 1 ? 'night' : 'nights'}`;
 }
 
+function normalizeDate(date: Date) {
+  const normalizedDate = new Date(date);
+  normalizedDate.setHours(0, 0, 0, 0);
+  return normalizedDate;
+}
+
+function isActiveGuestBooking(guestBooking: GuestBooking) {
+  const checkoutDate = normalizeDate(new Date(`${guestBooking.checkoutDate}T00:00:00`));
+  const today = normalizeDate(new Date());
+  return checkoutDate >= today;
+}
+
+function getNextRoomNumber(guestBookings: GuestBooking[]) {
+  const highestAssignedRoom = guestBookings.reduce((highestRoom, guestBooking) => {
+    const parsedRoomNumber = Number.parseInt(guestBooking.roomNumber, 10);
+
+    if (Number.isNaN(parsedRoomNumber)) {
+      return highestRoom;
+    }
+
+    return Math.max(highestRoom, parsedRoomNumber);
+  }, 202);
+
+  return String(highestAssignedRoom + 1);
+}
+
 export function GuestStayForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { login, userRole } = useAuth();
-  const { profile, saveProfile } = useGuestStay();
+  const { profile, restoreProfile, saveProfile } = useGuestStay();
+  const { clearBookings, replaceBookings } = useBooking();
   const [guestName, setGuestName] = useState(profile.guestName);
   const [checkInDate, setCheckInDate] = useState(profile.checkInDate ?? '');
   const [checkOutDate, setCheckOutDate] = useState(profile.checkOutDate ?? '');
   const [errorMessage, setErrorMessage] = useState('');
+  const [isLookingUpGuest, setIsLookingUpGuest] = useState(false);
 
   const returnTo = useMemo(
     () => searchParams.get('returnTo') || '/activities',
@@ -35,7 +66,7 @@ export function GuestStayForm() {
   const stayPreview =
     checkInDate && checkOutDate ? formatStayPreview(checkInDate, checkOutDate) : null;
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     const trimmedName = guestName.trim();
 
     if (!trimmedName || !checkInDate || !checkOutDate) {
@@ -48,12 +79,42 @@ export function GuestStayForm() {
       return;
     }
 
-    saveProfile({
-      guestName: trimmedName,
-      checkInDate,
-      checkOutDate,
-      roomNumber: profile.roomNumber || '203',
-    });
+    try {
+      setIsLookingUpGuest(true);
+      const guestBookings = await fetchGuestBookings();
+      const existingGuestBooking = guestBookings.find(
+        (guestBooking) =>
+          guestBooking.guestName.trim().toLowerCase() === trimmedName.toLowerCase() &&
+          isActiveGuestBooking(guestBooking),
+      );
+
+      if (existingGuestBooking) {
+        restoreProfile({
+          guestId: existingGuestBooking.guestId,
+          guestName: existingGuestBooking.guestName,
+          checkInDate: existingGuestBooking.checkInDate,
+          checkOutDate: existingGuestBooking.checkoutDate,
+          roomNumber: existingGuestBooking.roomNumber,
+          updatedAt: existingGuestBooking.updatedAt ?? new Date().toISOString(),
+        });
+        replaceBookings(existingGuestBooking.activities);
+      } else {
+        clearBookings();
+        saveProfile({
+          guestName: trimmedName,
+          checkInDate,
+          checkOutDate,
+          roomNumber: getNextRoomNumber(guestBookings),
+        });
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'We could not look up guest bookings right now.';
+      setErrorMessage(message);
+      return;
+    } finally {
+      setIsLookingUpGuest(false);
+    }
 
     if (userRole !== 'guest') {
       login('guest');
@@ -144,14 +205,16 @@ export function GuestStayForm() {
                   onClick={handleContinue}
                   size="lg"
                   className="bg-emerald-600 hover:bg-emerald-700"
+                  disabled={isLookingUpGuest}
                 >
-                  Continue to guest interests
+                  {isLookingUpGuest ? 'Checking guest booking...' : 'Continue to guest interests'}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   size="lg"
                   onClick={() => navigate(`/guest-interests?${new URLSearchParams({ returnTo }).toString()}`)}
+                  disabled={isLookingUpGuest}
                 >
                   Skip for now
                 </Button>

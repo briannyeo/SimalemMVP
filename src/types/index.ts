@@ -82,6 +82,7 @@ export interface GuestBooking {
   checkoutDate: string;
   roomNumber: string;
   activities: Activity[];
+  updatedAt?: string;
 }
 
 // ============================================================================
@@ -104,6 +105,7 @@ export interface GuestInterestProfile {
 }
 
 export interface GuestStayProfile {
+  guestId: string;
   guestName: string;
   checkInDate: string | null;
   checkOutDate: string | null;
@@ -208,4 +210,8 @@ export interface ReviewsResponse {
 
 export interface ItinerariesResponse {
   itineraries: SharedItinerary[];
+}
+
+export interface GuestBookingsResponse {
+  guestBookings: GuestBooking[];
 }

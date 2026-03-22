@@ -12,6 +12,7 @@ import { Calendar } from "./ui/calendar";
 import { Activity } from "../context/BookingContext";
 import { Calendar as CalendarIcon, Clock } from "lucide-react";
 import { formatDurationDisplay } from "../../utils/formatters";
+import { useGuestStay } from "../context/GuestStayContext";
 
 interface BookingModalProps {
   activity: Activity | null;
@@ -39,6 +40,7 @@ export function BookingModal({
   onClose,
   onConfirm,
 }: BookingModalProps) {
+  const { profile, hasStayDetails } = useGuestStay();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>("");
 
@@ -62,6 +64,54 @@ export function BookingModal({
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  const checkInDate = profile.checkInDate
+    ? new Date(`${profile.checkInDate}T00:00:00`)
+    : undefined;
+  const checkOutDate = profile.checkOutDate
+    ? new Date(`${profile.checkOutDate}T00:00:00`)
+    : undefined;
+
+  const firstBookableDate =
+    checkInDate && checkInDate > today ? checkInDate : today;
+
+  const lastBookableDate = checkOutDate
+    ? new Date(checkOutDate.getTime() - 86400000)
+    : undefined;
+
+  const isDateDisabled = (date: Date) => {
+    const normalizedDate = new Date(date);
+    normalizedDate.setHours(0, 0, 0, 0);
+
+    if (normalizedDate < today) {
+      return true;
+    }
+
+    if (!hasStayDetails || !checkInDate || !checkOutDate) {
+      return true;
+    }
+
+    return normalizedDate < checkInDate || normalizedDate >= checkOutDate;
+  };
+
+  const bookingWindowLabel =
+    hasStayDetails && checkInDate && checkOutDate
+      ? `${firstBookableDate.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })} to ${lastBookableDate && lastBookableDate >= firstBookableDate
+          ? lastBookableDate.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })
+          : firstBookableDate.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}`
+      : null;
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="w-[calc(100vw-2rem)] max-w-xl overflow-x-hidden overflow-y-auto p-4 sm:p-6 lg:max-w-3xl">
@@ -74,6 +124,17 @@ export function BookingModal({
           </DialogDescription>
         </DialogHeader>
 
+        {!hasStayDetails ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            Add your stay dates first before booking activities. Only dates during
+            your hotel stay can be selected.
+          </div>
+        ) : bookingWindowLabel ? (
+          <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm text-sky-800">
+            Bookable dates for this stay: {bookingWindowLabel}
+          </div>
+        ) : null}
+
         <div className="grid gap-6 py-4 lg:grid-cols-[minmax(0,1fr)_260px]">
           {/* Date Selection */}
           <div className="min-w-0">
@@ -85,7 +146,7 @@ export function BookingModal({
               mode="single"
               selected={selectedDate}
               onSelect={setSelectedDate}
-              disabled={(date) => date < today}
+              disabled={isDateDisabled}
               className="rounded-md border"
             />
           </div>
@@ -152,7 +213,7 @@ export function BookingModal({
           </Button>
           <Button
             onClick={handleConfirm}
-            disabled={!selectedDate || !selectedTime}
+            disabled={!selectedDate || !selectedTime || !hasStayDetails}
             className="bg-emerald-600 hover:bg-emerald-700"
           >
             Confirm Booking
