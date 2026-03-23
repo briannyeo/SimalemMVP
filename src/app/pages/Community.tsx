@@ -154,7 +154,6 @@ export function Community() {
   const [reviewComment, setReviewComment] = useState("");
   const [shareTitle, setShareTitle] = useState("");
   const [shareDescription, setShareDescription] = useState("");
-  const [shareTags, setShareTags] = useState("");
 
   const shareableActivities = Array.from(
     new Map(bookedActivities.map((activity) => [activity.id, activity])).values(),
@@ -239,18 +238,13 @@ export function Community() {
       return;
     }
 
-    const parsedTags = shareTags
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean);
-
     const payload: CreateSharedItineraryInput = {
       userName: profile.userName.trim() || "Simalem Guest",
       userAvatar: profile.userAvatar.trim() || undefined,
       title: trimmedTitle,
       description: trimmedDescription,
       activityIds: shareableActivities.map((activity) => activity.id),
-      tags: parsedTags.length > 0 ? parsedTags : buildDerivedTags(shareableActivities),
+      tags: buildDerivedTags(shareableActivities),
     };
 
     try {
@@ -259,7 +253,6 @@ export function Community() {
       setSharedItineraries((current) => [createdItinerary, ...current]);
       setShareTitle("");
       setShareDescription("");
-      setShareTags("");
       setSelectedTab("itineraries");
       toast.success("Itinerary shared", {
         description: "Your itinerary is now visible in the community hub.",
@@ -401,14 +394,6 @@ export function Community() {
                               placeholder="Example: Quiet cultural weekend at Simalem"
                             />
                           </div>
-                          {/* <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Tags (optional)</label>
-                            <Input
-                              value={shareTags}
-                              onChange={(event) => setShareTags(event.target.value)}
-                              placeholder="culture, low impact, family friendly"
-                            />
-                          </div> */}
                         </div>
 
                         <div className="space-y-2">

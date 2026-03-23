@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { CalendarDays, ChevronLeft, Hotel, UserRound } from 'lucide-react';
+import { ChevronLeft, Hotel } from 'lucide-react';
 import { fetchGuestBookings } from '../../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useBooking } from '../context/BookingContext';
@@ -10,15 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import type { GuestBooking } from '../../types';
-
-function formatStayPreview(checkInDate: string, checkOutDate: string) {
-  const startDate = new Date(`${checkInDate}T00:00:00`);
-  const endDate = new Date(`${checkOutDate}T00:00:00`);
-  const differenceInMs = endDate.getTime() - startDate.getTime();
-  const nights = Math.max(0, Math.round(differenceInMs / 86400000));
-
-  return `${nights} ${nights === 1 ? 'night' : 'nights'}`;
-}
 
 function normalizeDate(date: Date) {
   const normalizedDate = new Date(date);
@@ -70,9 +61,6 @@ export function GuestStayForm() {
     [searchParams],
   );
   const today = useMemo(() => formatDateInputValue(new Date()), []);
-
-  const stayPreview =
-    checkInDate && checkOutDate ? formatStayPreview(checkInDate, checkOutDate) : null;
 
   const handleContinue = async () => {
     const trimmedName = guestName.trim();
@@ -236,49 +224,6 @@ export function GuestStayForm() {
               </div>
             </CardContent>
           </Card>
-
-          {/* <div className="grid gap-6">
-            <Card className="border-0 bg-gray-900 text-white shadow-xl shadow-gray-200">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-xl">
-                  <CalendarDays className="h-5 w-5 text-emerald-300" />
-                  What this unlocks
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 text-sm text-gray-200">
-                <div className="rounded-2xl bg-white/10 p-4">
-                  Checkout totals become dynamic, based on the exact dates you are staying.
-                </div>
-                <div className="rounded-2xl bg-white/10 p-4">
-                  Your room charge, lunch, and dinner are added automatically for each stay day.
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-sky-100 bg-white/90">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-xl text-gray-900">
-                  <UserRound className="h-5 w-5 text-sky-600" />
-                  Stay preview
-                </CardTitle>
-                <CardDescription>
-                  We keep this on your device so you can return and adjust it anytime.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-gray-700">
-                <div className="flex items-center justify-between rounded-2xl bg-sky-50 px-4 py-3">
-                  <span>Room assignment</span>
-                  <span className="font-semibold text-sky-800">{profile.roomNumber}</span>
-                </div>
-                <div className="flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-3">
-                  <span>Estimated stay</span>
-                  <span className="font-semibold text-emerald-800">
-                    {stayPreview ?? 'Select dates to preview'}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          </div> */}
         </div>
       </div>
     </div>
