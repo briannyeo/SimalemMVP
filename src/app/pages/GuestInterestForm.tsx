@@ -211,7 +211,7 @@ export function GuestInterestForm() {
             </CardContent>
           </Card>
 
-          <div className="grid gap-6">
+          {/* <div className="grid gap-6">
             <Card className="border-0 bg-gray-900 text-white shadow-xl shadow-gray-200">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-xl">
@@ -249,7 +249,7 @@ export function GuestInterestForm() {
                 ))}
               </CardContent>
             </Card>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

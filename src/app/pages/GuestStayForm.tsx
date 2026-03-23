@@ -26,6 +26,13 @@ function normalizeDate(date: Date) {
   return normalizedDate;
 }
 
+function formatDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function isActiveGuestBooking(guestBooking: GuestBooking) {
   const checkoutDate = normalizeDate(new Date(`${guestBooking.checkoutDate}T00:00:00`));
   const today = normalizeDate(new Date());
@@ -62,6 +69,7 @@ export function GuestStayForm() {
     () => searchParams.get('returnTo') || '/activities',
     [searchParams],
   );
+  const today = useMemo(() => formatDateInputValue(new Date()), []);
 
   const stayPreview =
     checkInDate && checkOutDate ? formatStayPreview(checkInDate, checkOutDate) : null;
@@ -71,6 +79,11 @@ export function GuestStayForm() {
 
     if (!trimmedName || !checkInDate || !checkOutDate) {
       setErrorMessage('Please complete your name, check-in date, and check-out date.');
+      return;
+    }
+
+    if (checkInDate < today) {
+      setErrorMessage('Check-in date cannot be before today.');
       return;
     }
 
@@ -174,6 +187,7 @@ export function GuestStayForm() {
                     id="check-in-date"
                     type="date"
                     value={checkInDate}
+                    min={today}
                     onChange={(event) => {
                       setCheckInDate(event.target.value);
                       setErrorMessage('');
@@ -186,6 +200,7 @@ export function GuestStayForm() {
                     id="check-out-date"
                     type="date"
                     value={checkOutDate}
+                    min={checkInDate || today}
                     onChange={(event) => {
                       setCheckOutDate(event.target.value);
                       setErrorMessage('');

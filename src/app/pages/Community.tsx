@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Textarea } from "../components/ui/textarea";
 import { Input } from "../components/ui/input";
@@ -402,14 +401,14 @@ export function Community() {
                               placeholder="Example: Quiet cultural weekend at Simalem"
                             />
                           </div>
-                          <div className="space-y-2">
+                          {/* <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Tags (optional)</label>
                             <Input
                               value={shareTags}
                               onChange={(event) => setShareTags(event.target.value)}
                               placeholder="culture, low impact, family friendly"
                             />
-                          </div>
+                          </div> */}
                         </div>
 
                         <div className="space-y-2">
@@ -487,13 +486,6 @@ export function Community() {
                           </Button>
                         </div>
                         <p className="mt-3 text-sm text-gray-600">{itinerary.description}</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {itinerary.tags.map((tag) => (
-                            <Badge key={tag} variant="secondary" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
                       </CardHeader>
 
                       <CardContent>
