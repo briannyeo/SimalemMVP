@@ -30,20 +30,20 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-      <div className="container mx-auto px-4 flex h-16 items-center justify-between">
+      <div className="container mx-auto flex flex-col gap-3 px-4 py-3 sm:h-16 sm:flex-row sm:items-center sm:justify-between sm:py-0">
         <Link
           to={
             userRole === "supervisor" ? "/admin" : "/activities"
           }
-          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2 transition-opacity hover:opacity-80"
         >
           <Mountain className="h-6 w-6 text-emerald-600" />
-          <span className="text-xl font-semibold">
+          <span className="text-lg font-semibold sm:text-xl">
             Simalem Resort
           </span>
         </Link>
 
-        <nav className="flex items-center gap-6">
+        <nav className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 sm:w-auto sm:justify-end sm:gap-6">
           {userRole === "guest" && (
             <>
               <Link
@@ -85,7 +85,8 @@ export function Header() {
                   size="sm"
                   className="gap-2"
                 >
-                  <span>Final Checkout</span>
+                  <span className="sm:hidden">Checkout</span>
+                  <span className="hidden sm:inline">Final Checkout</span>
                 </Button>
               </Link>
             </>
