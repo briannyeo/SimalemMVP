@@ -187,7 +187,7 @@ export function GuestInterestForm() {
                 >
                   {isGenerating ? 'Generating AI itinerary...' : 'Continue to activities'}
                 </Button>
-                <Button
+                {/* <Button
                   type="button"
                   variant="outline"
                   size="lg"
@@ -195,7 +195,7 @@ export function GuestInterestForm() {
                   disabled={isGenerating}
                 >
                   Skip for now
-                </Button>
+                </Button> */}
                 {hasInterests && (
                   <Button
                     type="button"

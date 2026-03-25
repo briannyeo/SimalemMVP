@@ -334,6 +334,34 @@ export function Activities() {
           </div>
         )} */}
 
+        {!itinerary && (
+          <div className="mb-6 rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-2">
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600">
+                  AI itinerary planner
+                </p>
+                <h2 className="text-2xl font-semibold text-gray-900">
+                  Create a personalized activity plan
+                </h2>
+                <p className="max-w-3xl text-sm text-gray-600">
+                  {hasInterests
+                    ? "Update your preferences and let the AI re-rank activities around what you want to explore."
+                    : "Answer a few quick preference questions and we will generate an AI itinerary for your stay."}
+                </p>
+              </div>
+
+              <Button
+                type="button"
+                className="bg-emerald-600 hover:bg-emerald-700"
+                onClick={() => navigate("/guest-interests?returnTo=/activities")}
+              >
+                Create AI itinerary
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="mb-8">
           <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
             <TabsList>

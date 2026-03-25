@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { ChevronLeft, Hotel } from 'lucide-react';
+import { CalendarDays, ChevronLeft, Hotel } from 'lucide-react';
 import { fetchGuestBookings } from '../../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useBooking } from '../context/BookingContext';
@@ -24,6 +24,14 @@ function formatDateInputValue(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function formatDateDisplayValue(dateValue: string) {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(`${dateValue}T00:00:00`));
+}
+
 function isActiveGuestBooking(guestBooking: GuestBooking) {
   const checkoutDate = normalizeDate(new Date(`${guestBooking.checkoutDate}T00:00:00`));
   const today = normalizeDate(new Date());
@@ -42,6 +50,39 @@ function getNextRoomNumber(guestBookings: GuestBooking[]) {
   }, 202);
 
   return String(highestAssignedRoom + 1);
+}
+
+type StayDateFieldProps = {
+  id: string;
+  value: string;
+  min: string;
+  label: string;
+  onChange: (value: string) => void;
+};
+
+function StayDateField({ id, value, min, label, onChange }: StayDateFieldProps) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <div className="group relative">
+        <div className="border-input bg-input-background text-foreground flex h-9 w-full items-center justify-between rounded-md border px-3 text-sm transition-[color,box-shadow] group-focus-within:border-ring group-focus-within:ring-[3px] group-focus-within:ring-ring/50">
+          <span className={value ? 'text-foreground' : 'text-muted-foreground'}>
+            {value ? formatDateDisplayValue(value) : 'Select a date'}
+          </span>
+          <CalendarDays className="h-4 w-4 text-gray-500" />
+        </div>
+        <input
+          id={id}
+          type="date"
+          value={value}
+          min={min}
+          aria-label={label}
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          onChange={(event) => onChange(event.target.value)}
+        />
+      </div>
+    </div>
+  );
 }
 
 export function GuestStayForm() {
@@ -169,32 +210,26 @@ export function GuestStayForm() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="check-in-date">Check-in date</Label>
-                  <Input
-                    id="check-in-date"
-                    type="date"
-                    value={checkInDate}
-                    min={today}
-                    onChange={(event) => {
-                      setCheckInDate(event.target.value);
-                      setErrorMessage('');
-                    }}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="check-out-date">Check-out date</Label>
-                  <Input
-                    id="check-out-date"
-                    type="date"
-                    value={checkOutDate}
-                    min={checkInDate || today}
-                    onChange={(event) => {
-                      setCheckOutDate(event.target.value);
-                      setErrorMessage('');
-                    }}
-                  />
-                </div>
+                <StayDateField
+                  id="check-in-date"
+                  label="Check-in date"
+                  value={checkInDate}
+                  min={today}
+                  onChange={(value) => {
+                    setCheckInDate(value);
+                    setErrorMessage('');
+                  }}
+                />
+                <StayDateField
+                  id="check-out-date"
+                  label="Check-out date"
+                  value={checkOutDate}
+                  min={checkInDate || today}
+                  onChange={(value) => {
+                    setCheckOutDate(value);
+                    setErrorMessage('');
+                  }}
+                />
               </div>
 
               {errorMessage ? (
@@ -212,7 +247,7 @@ export function GuestStayForm() {
                 >
                   {isLookingUpGuest ? 'Checking guest booking...' : 'Continue to guest interests'}
                 </Button>
-                <Button
+                {/* <Button
                   type="button"
                   variant="outline"
                   size="lg"
@@ -220,7 +255,7 @@ export function GuestStayForm() {
                   disabled={isLookingUpGuest}
                 >
                   Skip for now
-                </Button>
+                </Button> */}
               </div>
             </CardContent>
           </Card>
