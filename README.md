@@ -1,8 +1,13 @@
+I cleaned it up for accuracy, consistency, and readability. I also fixed a few likely issues in the setup steps, especially around the Supabase CLI and some wording in the feature and structure sections. Source: 
+
+Use this revised version:
+
+````md
 # Simalem Resort - Activity Booking System
 
-A modern web application for booking activities at Simalem Resort with integrated community and environmental impact tracking. Built with React, TypeScript, Tailwind CSS, and Supabase.
+A modern web application for browsing and booking resort activities at Simalem Resort, with integrated community and environmental impact visibility. The application is built with React, TypeScript, Tailwind CSS, and Supabase.
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Features](#features)
 - [Tech Stack](#tech-stack)
@@ -12,133 +17,138 @@ A modern web application for booking activities at Simalem Resort with integrate
 - [Configuration](#configuration)
 - [Running Locally](#running-locally)
 - [Supabase Setup](#supabase-setup)
-- [Database Schema](#database-schema)
 - [Environment Variables](#environment-variables)
 - [Development](#development)
 - [Building for Production](#building-for-production)
+- [Debugging](#debugging)
+- [Notes](#notes)
+- [License](#license)
 
-## ✨ Features
+## Features
 
-- **Activity Browsing**: View and filter activities by category (Cultural, Environmental, Adventure)
-- **Impact Tracking**: Track community and environmental impact for each activity
-- **Booking System**: Date/time selection for activities with a booking cart
-- **Community Hub**: View shared itineraries and activity reviews from other guests
-- **Admin Portal**: Supervisor dashboard to view all guest bookings and impact metrics
-- **Purpose Engagement Ratio (PER)**: Automatic calculation of community and environmental impact ratios
-- **Dual User Roles**: Separate experiences for guests and supervisors
+- **Activity browsing**: View and filter activities by category
+- **Impact visibility**: Display community and environmental impact information for each activity
+- **Booking flow**: Select activity dates and times with a booking cart and summary flow
+- **Community hub**: View shared itineraries and activity reviews from other guests
+- **Admin portal**: Supervisor dashboard for viewing guest bookings and impact-related metrics
+- **Purpose Engagement Ratio (PER)**: Calculate overall engagement with community- and environmentally-linked activities
+- **Dual user roles**: Separate user experiences for guests and supervisors
 
-## 🛠 Tech Stack
+## Tech Stack
 
 ### Frontend
-- **React 18.3** - UI library
-- **TypeScript** - Type safety
-- **Vite** - Build tool and dev server
-- **React Router 7** - Client-side routing
-- **Tailwind CSS 4** - Utility-first CSS framework
+
+- **React 18** - UI library
+- **TypeScript** - Static typing
+- **Vite** - Build tool and development server
+- **React Router** - Client-side routing
+- **Tailwind CSS** - Utility-first CSS framework
 - **Radix UI** - Accessible component primitives
 - **Lucide React** - Icon library
 - **Sonner** - Toast notifications
 - **date-fns** - Date utilities
 
 ### Backend
+
 - **Supabase** - Backend as a Service (BaaS)
   - PostgreSQL database
-  - Edge Functions (Deno runtime)
+  - Edge Functions
   - Row Level Security (RLS)
 
-## 📁 Project Structure
+## Project Structure
 
-```
+```text
 simalem-resort-booking/
-├── index.html                 # HTML entry point
+├── index.html
 ├── src/
-│   ├── main.tsx              # Application entry point
+│   ├── main.tsx
 │   ├── types/
-│   │   └── index.ts          # Centralized TypeScript types
+│   │   └── index.ts
 │   ├── services/
-│   │   ├── supabase.ts       # Supabase client configuration
-│   │   └── api.ts            # API service layer (data fetching)
+│   │   ├── supabase.ts
+│   │   └── api.ts
 │   ├── utils/
-│   │   └── formatters.ts     # Utility functions (formatting, calculations)
+│   │   └── formatters.ts
 │   ├── app/
-│   │   ├── App.tsx           # Root application component
-│   │   ├── routes.tsx        # React Router configuration
+│   │   ├── App.tsx
+│   │   ├── routes.tsx
 │   │   ├── context/
-│   │   │   ├── AuthContext.tsx      # Authentication state management
-│   │   │   └── BookingContext.tsx   # Booking cart state management
+│   │   │   ├── AuthContext.tsx
+│   │   │   └── BookingContext.tsx
 │   │   ├── pages/
-│   │   │   ├── Activities.tsx       # Activities listing page
-│   │   │   ├── Community.tsx        # Community hub page
-│   │   │   ├── Checkout.tsx         # Booking checkout page
-│   │   │   ├── Summary.tsx          # Booking summary page
-│   │   │   ├── Login.tsx            # Login page
-│   │   │   └── Admin.tsx            # Supervisor admin portal
+│   │   │   ├── Activities.tsx
+│   │   │   ├── Community.tsx
+│   │   │   ├── Checkout.tsx
+│   │   │   ├── Summary.tsx
+│   │   │   ├── Login.tsx
+│   │   │   └── Admin.tsx
 │   │   ├── components/
-│   │   │   ├── ActivityCard.tsx     # Activity display card
-│   │   │   ├── BookingModal.tsx     # Date/time booking modal
-│   │   │   ├── Header.tsx           # Navigation header
-│   │   │   ├── Layout.tsx           # Page layout wrapper
-│   │   │   ├── ProtectedRoute.tsx   # Route authentication guard
-│   │   │   └── ui/                  # Radix UI components
+│   │   │   ├── ActivityCard.tsx
+│   │   │   ├── BookingModal.tsx
+│   │   │   ├── Header.tsx
+│   │   │   ├── Layout.tsx
+│   │   │   ├── ProtectedRoute.tsx
+│   │   │   └── ui/
 │   │   └── data/
-│   │       ├── activities.ts        # Mock activities (unused - for reference)
-│   │       ├── communityData.ts     # Mock community data (unused - for reference)
-│   │       └── mockGuestBookings.ts # Mock admin data (still in use)
+│   │       ├── activities.ts
+│   │       ├── communityData.ts
+│   │       └── mockGuestBookings.ts
 │   └── styles/
-│       ├── index.css         # Global styles
-│       ├── tailwind.css      # Tailwind imports
-│       ├── theme.css         # Custom theme tokens
-│       └── fonts.css         # Font imports
+│       ├── index.css
+│       ├── tailwind.css
+│       ├── theme.css
+│       └── fonts.css
 ├── supabase/
 │   └── functions/
 │       └── server/
-│           ├── index.tsx     # Edge function routes
-│           └── kv_store.tsx  # Key-value store utilities
-├── package.json              # Dependencies and scripts
-├── vite.config.ts           # Vite configuration
-├── .env.example             # Environment variables template
-└── README.md                # This file
-```
+│           ├── index.tsx
+│           └── kv_store.tsx
+├── package.json
+├── vite.config.ts
+├── .env.example
+└── README.md
+````
 
-## 📋 Prerequisites
+## Prerequisites
 
-- **Node.js** 18+ (LTS recommended)
-- **pnpm** 8+ (or npm/yarn)
-- **Supabase account** ([create one free](https://supabase.com))
+* **Node.js** 18 or above
+* **pnpm** 8 or above, or **npm**
+* A **Supabase** account and project
 
-## 🚀 Installation
+## Installation
 
-1. **Clone the repository**
+### 1. Clone the repository
 
 ```bash
 git clone <repository-url>
 cd simalem-resort-booking
 ```
 
-2. **Install dependencies**
+### 2. Install dependencies
+
+Using pnpm:
 
 ```bash
-# Using pnpm (recommended)
 pnpm install
-
-# Or using npm
-npm install
-
-# Or using yarn
-yarn install
 ```
 
-## ⚙️ Configuration
+Using npm:
 
-### 1. Environment Variables
+```bash
+npm install
+```
 
-Copy the example environment file and fill in your Supabase credentials:
+## Configuration
+
+### 1. Set up environment variables
+
+Copy the example environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` with your Supabase project details:
+Then update `.env` with your Supabase project details:
 
 ```env
 VITE_SUPABASE_URL=https://your-project-id.supabase.co
@@ -146,43 +156,57 @@ VITE_SUPABASE_ANON_KEY=your-anon-key-here
 VITE_SERVER_URL=https://your-project-id.supabase.co/functions/v1
 ```
 
-**Where to find these values:**
-1. Go to [Supabase Dashboard](https://supabase.com/dashboard)
-2. Select your project
-3. Go to Settings → API
-4. Copy the "Project URL" and "anon public" key
+### 2. Find your Supabase credentials
 
-### 2. Update Supabase Info (if needed)
+In the Supabase dashboard:
 
-If you were previously using Figma Make, you may need to remove the old Supabase info file:
+1. Open your project
+2. Go to **Settings → API**
+3. Copy:
+
+   * **Project URL**
+   * **anon public key**
+
+### 3. Remove old hardcoded config if applicable
+
+If this project was previously connected through Figma Make or another hardcoded setup, remove any obsolete Supabase config file if it still exists:
 
 ```bash
 rm -f utils/supabase/info.tsx
 ```
 
-The app will now use environment variables instead.
+## Running Locally
 
-## 🏃 Running Locally
-
-1. **Start the development server**
+Start the development server:
 
 ```bash
 pnpm dev
 ```
 
-The application will open at `http://localhost:5173`
+Or with npm:
 
-2. **Access the application**
-   - **Guest View**: Click "Access Guest Booking" on the login page
-   - **Supervisor View**: Click "Access Admin Portal" on the login page
+```bash
+npm run dev
+```
 
-## 🗄 Supabase Setup
+The app should be available at:
+
+```text
+http://localhost:5173
+```
+
+### Demo access
+
+* **Guest view**: Click **Access Guest Booking** on the login page
+* **Supervisor view**: Click **Access Admin Portal** on the login page
+
+## Supabase Setup
 
 ### Database Schema
 
-Your Supabase project needs the following tables:
+The Supabase project should include the following tables.
 
-#### 1. `activities` Table
+#### `activities`
 
 ```sql
 CREATE TABLE public.activities (
@@ -191,16 +215,26 @@ CREATE TABLE public.activities (
   description TEXT NOT NULL,
   duration_minutes INTEGER NOT NULL,
   price NUMERIC(10,2) NOT NULL,
-  community_impact TEXT NOT NULL CHECK (community_impact IN ('Direct Local Partner', 'Internal Community Support', 'No Direct Community Link')),
-  environmental_impact TEXT NOT NULL CHECK (environmental_impact IN ('Low', 'Medium', 'High')),
+  community_impact TEXT NOT NULL CHECK (
+    community_impact IN (
+      'Direct Local Partner',
+      'Internal Community Support',
+      'No Direct Community Link'
+    )
+  ),
+  environmental_impact TEXT NOT NULL CHECK (
+    environmental_impact IN ('Low', 'Medium', 'High')
+  ),
   image_url TEXT NOT NULL,
-  category TEXT NOT NULL CHECK (category IN ('Cultural', 'Environmental', 'Adventure')),
+  category TEXT NOT NULL CHECK (
+    category IN ('Cultural', 'Environmental', 'Adventure')
+  ),
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
 
-#### 2. `activity_reviews` Table
+#### `activity_reviews`
 
 ```sql
 CREATE TABLE public.activity_reviews (
@@ -216,7 +250,7 @@ CREATE TABLE public.activity_reviews (
 );
 ```
 
-#### 3. `shared_itineraries` Table
+#### `shared_itineraries`
 
 ```sql
 CREATE TABLE public.shared_itineraries (
@@ -233,7 +267,7 @@ CREATE TABLE public.shared_itineraries (
 );
 ```
 
-#### 4. `shared_itinerary_items` Table
+#### `shared_itinerary_items`
 
 ```sql
 CREATE TABLE public.shared_itinerary_items (
@@ -249,113 +283,166 @@ CREATE TABLE public.shared_itinerary_items (
 
 ### Edge Functions
 
-The application uses Supabase Edge Functions located in `supabase/functions/server/`.
+This project uses Supabase Edge Functions located in:
 
-**Deploy the edge function:**
+```text
+supabase/functions/server/
+```
+
+#### Deploy the function
+
+Project-local CLI approach:
 
 ```bash
-# Install Supabase CLI
-npm install -g supabase
+npx supabase login
+npx supabase link --project-ref your-project-id
+npx supabase functions deploy server
+```
 
-# Login to Supabase
+If you already have the Supabase CLI installed globally, you can also use:
+
+```bash
 supabase login
-
-# Link your project
 supabase link --project-ref your-project-id
-
-# Deploy the function
 supabase functions deploy server
 ```
 
-The edge function provides these endpoints:
-- `GET /make-server-01df2f8f/activities` - Fetch all active activities
-- `GET /make-server-01df2f8f/activity-reviews` - Fetch all reviews
-- `GET /make-server-01df2f8f/shared-itineraries` - Fetch all shared itineraries
-- `GET /make-server-01df2f8f/health` - Health check
+### Available endpoints
 
-## 🔐 Environment Variables
+Depending on how your edge function routes are implemented, the server exposes endpoints such as:
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `VITE_SUPABASE_URL` | Your Supabase project URL | Yes |
-| `VITE_SUPABASE_ANON_KEY` | Your Supabase anonymous public key | Yes |
-| `VITE_SERVER_URL` | Edge functions URL (optional, auto-generated if not provided) | No |
+* `GET /make-server-01df2f8f/activities`
+* `GET /make-server-01df2f8f/activity-reviews`
+* `GET /make-server-01df2f8f/shared-itineraries`
+* `GET /make-server-01df2f8f/health`
 
-## 💻 Development
+If your function base path changes, update this section to reflect the actual deployed route.
 
-### Key Files to Know
+## Environment Variables
 
-- **Entry Point**: `/src/main.tsx` - Renders the React app into the DOM
-- **Root Component**: `/src/app/App.tsx` - Wraps the app with providers
-- **Routing**: `/src/app/routes.tsx` - Defines all application routes
-- **Types**: `/src/types/index.ts` - All TypeScript type definitions
-- **API Layer**: `/src/services/api.ts` - All data fetching functions
-- **Supabase Client**: `/src/services/supabase.ts` - Supabase configuration
+| Variable                 | Description                          | Required    |
+| ------------------------ | ------------------------------------ | ----------- |
+| `VITE_SUPABASE_URL`      | Supabase project URL                 | Yes         |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon public key             | Yes         |
+| `VITE_SERVER_URL`        | Base URL for Supabase Edge Functions | Usually yes |
 
-### Adding New Features
+## Development
 
-1. **Add types** to `/src/types/index.ts`
-2. **Create API functions** in `/src/services/api.ts`
-3. **Create UI components** in `/src/app/components/`
-4. **Create pages** in `/src/app/pages/`
-5. **Add routes** in `/src/app/routes.tsx`
+### Key files
 
-### State Management
+* **`src/main.tsx`** - Application entry point
+* **`src/app/App.tsx`** - Root component and providers
+* **`src/app/routes.tsx`** - Route definitions
+* **`src/types/index.ts`** - Shared TypeScript types
+* **`src/services/api.ts`** - API and data-fetching logic
+* **`src/services/supabase.ts`** - Supabase client setup
 
-- **Authentication**: Uses React Context (`AuthContext`)
-- **Booking Cart**: Uses React Context (`BookingContext`)
-- **Local Storage**: Auth state persists via localStorage
+### Adding new features
 
-## 🏗 Building for Production
+1. Add or update types in `src/types/index.ts`
+2. Add API logic in `src/services/api.ts`
+3. Add components in `src/app/components/`
+4. Add pages in `src/app/pages/`
+5. Register routes in `src/app/routes.tsx`
+
+### State management
+
+* **Authentication**: React Context via `AuthContext`
+* **Booking cart**: React Context via `BookingContext`
+* **Persistence**: Selected client-side state persists in `localStorage`
+
+## Building for Production
+
+Build the app:
 
 ```bash
-# Build the application
 pnpm build
+```
 
-# Preview the production build
+Preview the production build locally:
+
+```bash
 pnpm preview
 ```
 
-The build output will be in the `dist/` directory.
+Or with npm:
 
-## 🔍 Debugging
+```bash
+npm run build
+npm run preview
+```
 
-### Common Issues
+The production output is generated in:
 
-**1. "Missing Supabase environment variables" error**
-- Ensure `.env` file exists and contains valid Supabase credentials
-- Restart the dev server after changing `.env`
+```text
+dist/
+```
 
-**2. Activities not loading**
-- Check browser console for error messages
-- Verify edge function is deployed: `supabase functions list`
-- Check Supabase dashboard for database connection
+## Debugging
 
-**3. Build errors related to imports**
-- Clear node_modules and reinstall: `rm -rf node_modules && pnpm install`
-- Clear Vite cache: `rm -rf .vite`
+### Common issues
 
-## 📝 Notes
+#### 1. Missing Supabase environment variables
 
-### Mock Data
+* Confirm that `.env` exists
+* Confirm all required values are present
+* Restart the development server after updating environment variables
 
-Some files in `/src/app/data/` contain mock data:
-- `activities.ts` - No longer used (activities come from database)
-- `communityData.ts` - No longer used (reviews/itineraries come from database)  
-- `mockGuestBookings.ts` - Still used for admin portal demo
+#### 2. Activities not loading
+
+* Check the browser console for errors
+* Confirm the edge function is deployed
+* Confirm the database tables exist and contain data
+* Confirm `VITE_SERVER_URL` points to the correct function base URL
+
+#### 3. Build or import errors
+
+Reinstall dependencies:
+
+```bash
+rm -rf node_modules
+pnpm install
+```
+
+If needed, clear cached files as well.
+
+## Notes
+
+### Mock data
+
+Some files under `src/app/data/` are mock or transitional data:
+
+* `activities.ts` - Legacy mock activity data
+* `communityData.ts` - Legacy mock community data
+* `mockGuestBookings.ts` - Demo admin data still in use
 
 ### Migrating from Figma Make
 
-If you're migrating from Figma Make:
-1. Remove `/utils/supabase/info.tsx` (hardcoded credentials)
-2. Create `.env` file with environment variables
-3. Install missing dependency: `pnpm add @supabase/supabase-js`
-4. Deploy edge functions to your Supabase project
+If migrating from Figma Make:
 
-## 📄 License
+1. Remove any obsolete hardcoded Supabase config
+2. Add a valid `.env` file
+3. Ensure `@supabase/supabase-js` is installed
+4. Deploy the Supabase Edge Function to your own project
+5. Verify the frontend points to the correct backend URLs
+
+## License
 
 This project is private and proprietary.
 
-## 🤝 Contributing
+## Contributing
 
-For questions or contributions, please contact the development team.
+For internal questions, updates, or contributions, please contact the project owner or development team.
+
+```
+
+Main fixes I made:
+- Standardised headings, tone, and naming.
+- Removed some awkward phrasing and made the README sound more professional.
+- Softened a few claims that might be inaccurate unless verified from the codebase.
+- Corrected the Supabase CLI section so it does not rely only on global npm install, which is often not the best path.
+- Made `VITE_SERVER_URL` wording less contradictory.
+- Cleaned up grammar, capitalisation, and formatting throughout.
+
+If you want, I can also turn this into a more polished **GitHub-style README** with badges, screenshots, and a short architecture diagram section.
+```
