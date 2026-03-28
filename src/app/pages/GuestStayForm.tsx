@@ -38,6 +38,17 @@ function isActiveGuestBooking(guestBooking: GuestBooking) {
   return checkoutDate >= today;
 }
 
+function doesBookingMatchSelectedStay(
+  guestBooking: GuestBooking,
+  checkInDate: string,
+  checkOutDate: string,
+) {
+  return (
+    guestBooking.checkInDate === checkInDate &&
+    guestBooking.checkoutDate === checkOutDate
+  );
+}
+
 function getNextRoomNumber(guestBookings: GuestBooking[]) {
   const highestAssignedRoom = guestBookings.reduce((highestRoom, guestBooking) => {
     const parsedRoomNumber = Number.parseInt(guestBooking.roomNumber, 10);
@@ -127,7 +138,8 @@ export function GuestStayForm() {
       const existingGuestBooking = guestBookings.find(
         (guestBooking) =>
           guestBooking.guestName.trim().toLowerCase() === trimmedName.toLowerCase() &&
-          isActiveGuestBooking(guestBooking),
+          isActiveGuestBooking(guestBooking) &&
+          doesBookingMatchSelectedStay(guestBooking, checkInDate, checkOutDate),
       );
 
       if (existingGuestBooking) {

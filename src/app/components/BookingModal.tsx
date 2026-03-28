@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -78,6 +78,14 @@ export function BookingModal({
     ? new Date(checkOutDate.getTime() - 86400000)
     : undefined;
 
+  const hasBookableStayWindow = Boolean(
+    hasStayDetails &&
+      checkInDate &&
+      checkOutDate &&
+      lastBookableDate &&
+      lastBookableDate >= firstBookableDate,
+  );
+
   const isDateDisabled = (date: Date) => {
     const normalizedDate = new Date(date);
     normalizedDate.setHours(0, 0, 0, 0);
@@ -93,27 +101,34 @@ export function BookingModal({
     return normalizedDate < checkInDate || normalizedDate >= checkOutDate;
   };
 
+  useEffect(() => {
+    if (selectedDate && isDateDisabled(selectedDate)) {
+      setSelectedDate(undefined);
+    }
+  }, [selectedDate, profile.checkInDate, profile.checkOutDate, hasStayDetails]);
+
   const bookingWindowLabel =
-    hasStayDetails && checkInDate && checkOutDate
+    hasBookableStayWindow && lastBookableDate
       ? `${firstBookableDate.toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
           year: "numeric",
-        })} to ${lastBookableDate && lastBookableDate >= firstBookableDate
-          ? lastBookableDate.toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })
-          : firstBookableDate.toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}`
+        })} to ${lastBookableDate.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })}`
       : null;
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          handleClose();
+        }
+      }}
+    >
       <DialogContent className="w-[calc(100vw-2rem)] max-w-xl overflow-x-hidden overflow-y-auto p-4 sm:p-6 lg:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="text-2xl">
@@ -147,6 +162,9 @@ export function BookingModal({
               selected={selectedDate}
               onSelect={setSelectedDate}
               disabled={isDateDisabled}
+              defaultMonth={firstBookableDate}
+              fromMonth={firstBookableDate}
+              toMonth={lastBookableDate ?? firstBookableDate}
               className="rounded-md border"
             />
           </div>
